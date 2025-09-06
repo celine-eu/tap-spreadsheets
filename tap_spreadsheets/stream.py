@@ -117,13 +117,10 @@ class SpreadsheetStream(Stream):
         with self.storage.open(file, "rb") as fh:
             wb = load_workbook(fh, read_only=True, data_only=True)
 
+            ws = None
             if isinstance(self.worksheet_ref, int):
-                try:
+                if self.worksheet_ref < len(wb.worksheets):
                     ws = wb.worksheets[self.worksheet_ref]
-                except IndexError:
-                    raise ValueError(
-                        f"Worksheet index {self.worksheet_ref} out of range in {file}."
-                    )
             elif isinstance(self.worksheet_ref, str):
                 if self.worksheet_ref in wb.sheetnames:
                     ws = wb[self.worksheet_ref]
@@ -135,14 +132,11 @@ class SpreadsheetStream(Stream):
                         else re.compile(pattern)
                     )
                     matches = [name for name in wb.sheetnames if regex.match(name)]
-                    if not matches:
-                        raise ValueError(
-                            f"No worksheets match '{pattern}' in {file}. "
-                            f"Available: {wb.sheetnames}"
-                        )
-                    ws = wb[matches[0]]
-            else:
-                raise ValueError("worksheet_ref must be int, str, or regex pattern")
+                    if matches:
+                        ws = wb[matches[0]]
+            if ws is None:
+                logger.warning("No matching worksheet found in %s. Skipping file.", file)
+                return []  # skip schema for this file
 
             header_row = ws.iter_rows(
                 min_row=self.skip_rows + 1,
@@ -150,8 +144,8 @@ class SpreadsheetStream(Stream):
                 values_only=True,
             )
             raw_headers = next(header_row)
+            return [self._stem_header(h, i) for i, h in enumerate(raw_headers)][self.skip_columns :]
 
-        return [self._stem_header(h, i) for i, h in enumerate(raw_headers)][self.skip_columns :]
 
     def _iter_excel(self, file: str):
         """Iterate data rows (excluding header) from all matched worksheets."""
@@ -163,10 +157,12 @@ class SpreadsheetStream(Stream):
                 try:
                     worksheets = [wb.worksheets[self.worksheet_ref]]
                 except IndexError:
-                    raise ValueError(
-                        f"Worksheet index {self.worksheet_ref} out of range in {file}. "
-                        f"Available: 0..{len(wb.worksheets)-1}"
+                    logger.warning(
+                        "Worksheet index %s out of range in %s. Skipping file.",
+                        self.worksheet_ref, file,
                     )
+                    return  # skip file
+
             elif isinstance(self.worksheet_ref, str):
                 if self.worksheet_ref in wb.sheetnames:
                     worksheets = [wb[self.worksheet_ref]]
@@ -179,21 +175,21 @@ class SpreadsheetStream(Stream):
                     )
                     matches = [name for name in wb.sheetnames if regex.match(name)]
                     if not matches:
-                        raise ValueError(
-                            f"No worksheets match '{pattern}' in {file}. "
-                            f"Available: {wb.sheetnames}"
+                        logger.warning(
+                            "No worksheets match '%s' in %s. Skipping file. Available: %s",
+                            pattern, file, wb.sheetnames,
                         )
+                        return  # skip file
                     worksheets = [wb[name] for name in matches]
             else:
-                raise ValueError(
-                    "Excel worksheet must be an int (index), str (name), or pattern."
-                )
+                logger.warning("Invalid worksheet_ref %s. Skipping file %s", self.worksheet_ref, file)
+                return
 
             for ws in worksheets:
-                # data starts after the header row
                 start_row = self.skip_rows + 2
                 for row in ws.iter_rows(min_row=start_row, values_only=True):
                     yield row
+
 
     def _extract_headers_csv(self, file: str) -> list[str]:
         """Extract and normalize headers from a CSV file."""
