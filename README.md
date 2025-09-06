@@ -4,39 +4,97 @@
 
 Built with the [Meltano Tap SDK](https://sdk.meltano.com) for Singer Taps.
 
-<!--
+## Capabilities
 
-Developer TODO: Update the below as needed to correctly describe the install procedure. For instance, if you do not have a PyPI repo, or if you want users to directly install from your git repo, you can modify this step as appropriate.
+- `catalog`
+- `state`
+- `discover`
+- `activate-version`
+- `about`
+- `stream-maps`
+- `schema-flattening`
+- `batch`
 
-## Installation
+## Supported Python Versions
 
-Install from PyPI:
+- 3.10
+- 3.11
+- 3.12
+- 3.13
+- 3.14
 
-```bash
-uv tool install tap-spreadsheets
-```
+## Settings
 
-Install from GitHub:
+| Setting | Required | Default | Description |
+|:--------|:--------:|:-------:|:------------|
+| files | True | None | List of file configurations. |
+| stream_maps | False | None | Config object for stream maps capability. For more information check out [Stream Maps](https://sdk.meltano.com/en/latest/stream_maps.html). |
+| stream_maps.__else__ | False | None | Currently, only setting this to `__NULL__` is supported. This will remove all other streams. |
+| stream_map_config | False | None | User-defined config values to be used within map expressions. |
+| faker_config | False | None | Config for the [`Faker`](https://faker.readthedocs.io/en/master/) instance variable `fake` used within map expressions. Only applicable if the plugin specifies `faker` as an additional dependency (through the `singer-sdk` `faker` extra or directly). |
+| faker_config.seed | False | None | Value to seed the Faker generator for deterministic output: https://faker.readthedocs.io/en/master/#seeding-the-generator |
+| faker_config.locale | False | None | One or more LCID locale strings to produce localized output for: https://faker.readthedocs.io/en/master/#localization |
+| flattening_enabled | False | None | 'True' to enable schema flattening and automatically expand nested properties. |
+| flattening_max_depth | False | None | The max depth to flatten schemas. |
+| batch_config | False | None | Configuration for BATCH message capabilities. |
+| batch_config.encoding | False | None | Specifies the format and compression of the batch files. |
+| batch_config.encoding.format | False | None | Format to use for batch files. |
+| batch_config.encoding.compression | False | None | Compression format to use for batch files. |
+| batch_config.storage | False | None | Defines the storage layer to use when writing batch files |
+| batch_config.storage.root | False | None | Root path to use when writing batch files. |
+| batch_config.storage.prefix | False | None | Prefix to use when writing batch files. |
 
-```bash
-uv tool install git+https://github.com/ORG_NAME/tap-spreadsheets.git@main
-```
-
--->
+A full list of supported settings and capabilities is available by running: `tap-spreadsheets --about`
 
 ## Configuration
 
 ### Accepted Config Options
 
-<!--
-Developer TODO: Provide a list of config options accepted by the tap.
+`files` (array) List of file configurations. Each entry is an object with keys:
+- `path` (string): Glob expression (local or S3).
+- `format` (string): 'excel' or 'csv'.
+- `worksheet` (string): Worksheet index or name (Excel only).
+- `table_name` (string): Optional stream name (defaults to file name).
+- `primary_keys` (array): List of PK column names.
+- `drop_empty` (boolean): Drop rows with empty/null PKs.
+- `skip_columns` (integer): Number of leading columns to skip.
+- `skip_rows` (integer): Rows to skip before headers.
+- `sample_rows` (integer): Rows to sample for schema inference.
+- `column_headers` (array): Explicit column headers.
+- `delimiter` (string): CSV delimiter, default ','. Inferred if not provided.
+- `quotechar` (string): CSV quote char, default '"'. Inferred if not provided.
 
-This section can be created by copy-pasting the CLI output from:
+### Example
 
+```yaml
+      config:
+        files:
+          - path: data/*.xlsx
+            format: excel
+            table_name: test
+            primary_keys: [date, total]
+            drop_empty: true
+            worksheet: Sheet2
+            skip_columns: 1
+            skip_rows: 4
+
+          - path: data/*.xlsx
+          format: excel
+          worksheet: Sheet2
+          table_name: excel_table
+          primary_keys: [date, total]
+          drop_empty: true
+          skip_columns: 1
+          skip_rows: 4
+
+          - path: s3://my-bucket/reports/*.csv
+          format: csv
+          table_name: csv_reports
+          primary_keys: [id]
+          delimiter: ";"
+          quotechar: "'"
 ```
-tap-spreadsheets --about --format=markdown
-```
--->
+
 
 A full list of supported settings and capabilities for this
 tap is available by running:
@@ -51,11 +109,17 @@ This Singer tap will automatically import any environment variables within the w
 `.env` if the `--config=ENV` is provided, such that config values will be considered if a matching
 environment variable is set either in the terminal context or in the `.env` file.
 
-### Source Authentication and Authorization
 
-<!--
-Developer TODO: If your tap requires special access on the source system, or any special authentication requirements, provide those here.
--->
+## Installation
+
+Install from PyPI:
+
+Install from GitHub:
+
+```bash
+uv tool install git+https://github.com/ORG_NAME/tap-spreadsheets.git@main
+```
+
 
 ## Usage
 
