@@ -47,18 +47,23 @@ plugins:
             table_name: test
             primary_keys: [date, total]
             drop_empty: true
+            worksheet: Sheet1
+
+          - path: data/*.xlsx
+            format: excel
+            table_name: test_skip
+            primary_keys: [date, total]
+            drop_empty: true
             worksheet: Sheet2
             skip_columns: 1
             skip_rows: 4
 
           - path: data/*.xlsx
             format: excel
-            table_name: test
+            table_name: test_regex
             primary_keys: [date, total]
             drop_empty: true
-            worksheet: "report_20[0-9]{2}"
-            skip_columns: 1
-            skip_rows: 4
+            worksheet: "report_[0-9]+"
 
           # - path: data/*.xlsx
           # format: excel

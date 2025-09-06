@@ -113,7 +113,7 @@ def test_excel_records_not_empty():
     records = list(streams[0].get_records(context=None))
     assert len(records) > 0
     # Keys match expected headers
-    assert set(records[0].keys()) == {"date", "value", "random", "total"}
+    assert set(records[0].keys()) == {"date", "value", "random", "total", "comments_and_notes"}
 
 
 def test_csv_records_not_empty():

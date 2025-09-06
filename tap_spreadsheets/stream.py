@@ -10,7 +10,8 @@ from openpyxl import load_workbook
 from singer_sdk.streams import Stream
 from singer_sdk import typing as th
 from logging import getLogger
-import csv
+from decimal import Decimal
+from datetime import datetime, date, time, timedelta
 
 from tap_spreadsheets.storage import Storage
 
@@ -29,7 +30,7 @@ class SpreadsheetStream(Stream):
         self.format: str = file_cfg["format"].lower()
         self.worksheet_ref: str | int | None = file_cfg.get("worksheet")
         self.table_name = file_cfg.get("table_name")
-        
+
         if not self.table_name:
             self.table_name = "spreadsheet_stream"
             if self.format == "excel" and self.worksheet_ref:
@@ -45,38 +46,128 @@ class SpreadsheetStream(Stream):
         self.column_headers = file_cfg.get("column_headers")
 
         self._schema = None
+        self._headers: list[str] = []
         self.storage = Storage(self.path_glob)
 
+    def _stem_header(self, h: t.Any, idx: int) -> str:
+        """Normalize header names to safe identifiers."""
+        # If we accidentally get a Cell or other object, extract its value
+        if hasattr(h, "value"):
+            h = h.value
+
+        if h is None or str(h).strip() == "":
+            return f"col_{idx}"
+
+        h = str(h)
+        import unicodedata, re
+        h = unicodedata.normalize("NFKD", h).encode("ascii", "ignore").decode()
+        h = h.replace("\n", " ").replace("/", " ")
+        h = h.lower()
+        h = re.sub(r"[^a-z0-9]+", "_", h)
+        h = re.sub(r"_+", "_", h)
+        h = h.strip("_")
+
+        return h or f"col_{idx}"
+
+    def _infer_type(self, col_values: list[t.Any]):
+        """Infer a JSON schema type from sample values with safe fallback."""
+        if not col_values:
+            return th.StringType()
+
+        norm = []
+        for v in col_values:
+            if isinstance(v, Decimal):
+                norm.append(float(v))
+            else:
+                norm.append(v)
+        col_values = norm
+
+        if all(isinstance(v, int) for v in col_values):
+            return th.IntegerType()
+        if all(isinstance(v, (int, float)) for v in col_values):
+            return th.NumberType()
+        if all(isinstance(v, str) for v in col_values):
+            return th.StringType()
+        if any(isinstance(v, (int, float)) for v in col_values):
+            return th.NumberType()
+        return th.StringType()
+
+    def _coerce_value(self, v: t.Any) -> t.Any:
+        """Coerce cell values into JSON-serializable types."""
+        if v is None:
+            return None
+        if isinstance(v, Decimal):
+            return float(v)
+        if isinstance(v, (datetime, date, time)):
+            return v.isoformat()
+        if isinstance(v, timedelta):
+            return v.total_seconds()
+        return v
+
+    def _extract_headers_excel(self, file: str) -> list[str]:
+        with self.storage.open(file, "rb") as fh:
+            wb = load_workbook(fh, read_only=True, data_only=True)
+
+            if isinstance(self.worksheet_ref, int):
+                try:
+                    ws = wb.worksheets[self.worksheet_ref]
+                except IndexError:
+                    raise ValueError(
+                        f"Worksheet index {self.worksheet_ref} out of range in {file}."
+                    )
+            elif isinstance(self.worksheet_ref, str):
+                if self.worksheet_ref in wb.sheetnames:
+                    ws = wb[self.worksheet_ref]
+                else:
+                    pattern = self.worksheet_ref
+                    regex = (
+                        re.compile(fnmatch.translate(pattern))
+                        if any(ch in pattern for ch in ["*", "?"])
+                        else re.compile(pattern)
+                    )
+                    matches = [name for name in wb.sheetnames if regex.match(name)]
+                    if not matches:
+                        raise ValueError(
+                            f"No worksheets match '{pattern}' in {file}. "
+                            f"Available: {wb.sheetnames}"
+                        )
+                    ws = wb[matches[0]]
+            else:
+                raise ValueError("worksheet_ref must be int, str, or regex pattern")
+
+            header_row = ws.iter_rows(
+                min_row=self.skip_rows + 1,
+                max_row=self.skip_rows + 1,
+                values_only=True,
+            )
+            raw_headers = next(header_row)
+
+        return [self._stem_header(h, i) for i, h in enumerate(raw_headers)][self.skip_columns :]
+
     def _iter_excel(self, file: str):
-        """Iterate rows from all Excel worksheets that match index, name, or pattern."""
+        """Iterate data rows (excluding header) from all matched worksheets."""
         with self.storage.open(file, "rb") as fh:
             wb = load_workbook(fh, read_only=True, data_only=True)
 
             worksheets = []
-
             if isinstance(self.worksheet_ref, int):
-                # Select by index
                 try:
                     worksheets = [wb.worksheets[self.worksheet_ref]]
                 except IndexError:
                     raise ValueError(
                         f"Worksheet index {self.worksheet_ref} out of range in {file}. "
-                        f"Available indexes: 0..{len(wb.worksheets) - 1}"
+                        f"Available: 0..{len(wb.worksheets)-1}"
                     )
-
             elif isinstance(self.worksheet_ref, str):
-                # 1. Exact match
                 if self.worksheet_ref in wb.sheetnames:
                     worksheets = [wb[self.worksheet_ref]]
                 else:
-                    # 2. Glob or regex match → collect ALL matches
                     pattern = self.worksheet_ref
-
-                    if any(ch in pattern for ch in ["*", "?"]):
-                        regex = re.compile(fnmatch.translate(pattern))
-                    else:
-                        regex = re.compile(pattern)
-
+                    regex = (
+                        re.compile(fnmatch.translate(pattern))
+                        if any(ch in pattern for ch in ["*", "?"])
+                        else re.compile(pattern)
+                    )
                     matches = [name for name in wb.sheetnames if regex.match(name)]
                     if not matches:
                         raise ValueError(
@@ -84,21 +175,45 @@ class SpreadsheetStream(Stream):
                             f"Available: {wb.sheetnames}"
                         )
                     worksheets = [wb[name] for name in matches]
-
             else:
                 raise ValueError(
-                    "Excel format requires worksheet to be an integer (index), "
-                    "a string (name), or a pattern (glob/regex)."
+                    "Excel worksheet must be an int (index), str (name), or pattern."
                 )
 
-            # Yield rows from all matched worksheets
             for ws in worksheets:
-                for row in ws.iter_rows(min_row=self.skip_rows + 1, values_only=True):
+                # data starts after the header row
+                start_row = self.skip_rows + 2
+                for row in ws.iter_rows(min_row=start_row, values_only=True):
                     yield row
+
+    def _extract_headers_csv(self, file: str) -> list[str]:
+        """Extract and normalize headers from a CSV file."""
+        with self.storage.open(file, "rt") as fh:
+            reader = csv.reader(fh)
+
+            # Skip configured rows before header
+            for _ in range(self.skip_rows):
+                next(reader, None)
+
+            try:
+                raw_headers = next(reader)
+            except StopIteration:
+                raise ValueError(f"No header row found in {file}")
+
+        headers: list[str] = []
+        for i, h in enumerate(raw_headers):
+            # Fallback if header is empty or looks numeric
+            if h is None or str(h).strip() == "":
+                headers.append(f"col_{i}")
+            elif str(h).strip().isnumeric():
+                headers.append(f"col_{i}")
+            else:
+                headers.append(self._stem_header(h, i))
+
+        return headers[self.skip_columns :]
 
     def _iter_csv(self, file: str):
         with self.storage.open(file, "rt") as fh:
-            # Peek at a sample to detect dialect if not explicitly set
             sample = fh.read(4096)
             fh.seek(0)
 
@@ -112,14 +227,13 @@ class SpreadsheetStream(Stream):
                     delimiter = delimiter or dialect.delimiter
                     quotechar = quotechar or dialect.quotechar
                 except csv.Error:
-                    # fallback defaults
                     delimiter = delimiter or ","
                     quotechar = quotechar or '"'
 
             reader = csv.reader(fh, delimiter=delimiter, quotechar=quotechar)
 
-            # skip configured number of rows
-            for _ in range(self.skip_rows):
+            # skip configured number of rows + the header
+            for _ in range(self.skip_rows + 1):
                 next(reader, None)
 
             for row in reader:
@@ -138,45 +252,35 @@ class SpreadsheetStream(Stream):
 
         sample_file = self._get_files()[0]
         rows = (
-            self._iter_excel(sample_file) if self.format == "excel" else self._iter_csv(sample_file)
+            self._iter_excel(sample_file)
+            if self.format == "excel"
+            else self._iter_csv(sample_file)
         )
 
-        # headers
         if self.column_headers:
-            headers = self.column_headers
+            headers = [self._stem_header(h, i) for i, h in enumerate(self.column_headers)]
         else:
-            try:
-                raw_headers = next(rows)
-            except StopIteration:
-                raise ValueError(f"No header row found in {sample_file}")
-            headers = [
-                str(h).strip().lower() if h not in (None, "") else f"col_{i}"
-                for i, h in enumerate(raw_headers)
-            ]
-        headers = headers[self.skip_columns :]
+            if self.format == "excel":
+                headers = self._extract_headers_excel(sample_file)
+            else:
+                headers = self._extract_headers_csv(sample_file)
 
-        # samples
+        self._headers = headers
+
+
         samples = []
         for i, row in enumerate(rows):
             if i >= self.sample_rows:
                 break
             samples.append(row)
 
-        # type inference
         types: dict[str, th.JSONTypeHelper] = {}
         for i, h in enumerate(headers):
             col_idx = i + self.skip_columns
             col_values = [
                 r[col_idx] for r in samples if col_idx < len(r) and r[col_idx] not in (None, "")
             ]
-            if not col_values:
-                types[h] = th.StringType()
-            elif all(isinstance(v, int) for v in col_values):
-                types[h] = th.IntegerType()
-            elif all(isinstance(v, (int, float)) for v in col_values):
-                types[h] = th.NumberType()
-            else:
-                types[h] = th.StringType()
+            types[h] = self._infer_type(col_values)
 
         self._schema = th.PropertiesList(
             *(th.Property(name.lower(), tpe) for name, tpe in types.items())
@@ -184,33 +288,23 @@ class SpreadsheetStream(Stream):
         return self._schema
 
     def get_records(self, context: Context | None) -> t.Iterable[dict]:
+        if not self._headers:
+            _ = self.schema  # ensures headers are set
+        headers = self._headers
+
         for file in self._get_files():
             rows = (
-                self._iter_excel(file) if self.format == "excel" else self._iter_csv(file)
+                self._iter_excel(file)
+                if self.format == "excel"
+                else self._iter_csv(file)
             )
-
-            # headers
-            if self.column_headers:
-                headers = self.column_headers
-            else:
-                try:
-                    raw_headers = next(rows)
-                except StopIteration:
-                    logger.warning("File %s has no data rows.", file)
-                    continue
-                headers = [
-                    str(h).strip().lower() if h not in (None, "") else f"col_{i}"
-                    for i, h in enumerate(raw_headers)
-                ]
-            headers = headers[self.skip_columns :]
-
             for row in rows:
                 record = {
-                    h: row[i + self.skip_columns] if i + self.skip_columns < len(row) else None
+                    h: self._coerce_value(row[i + self.skip_columns])
+                    if i + self.skip_columns < len(row)
+                    else None
                     for i, h in enumerate(headers)
                 }
-
                 if self.drop_empty and any(record.get(pk) in (None, "") for pk in self.primary_keys):
                     continue
-
                 yield record
