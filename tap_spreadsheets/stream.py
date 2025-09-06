@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import typing as t
+import re
+import fnmatch
 import csv
 from openpyxl import load_workbook
 from singer_sdk.streams import Stream
@@ -46,26 +48,53 @@ class SpreadsheetStream(Stream):
         self.storage = Storage(self.path_glob)
 
     def _iter_excel(self, file: str):
+        """Iterate rows from all Excel worksheets that match index, name, or pattern."""
         with self.storage.open(file, "rb") as fh:
             wb = load_workbook(fh, read_only=True, data_only=True)
-            try:
-                if isinstance(self.worksheet_ref, int):
-                    # select by index
-                    try:
-                        ws = wb.worksheets[self.worksheet_ref]
-                    except IndexError:
-                        raise ValueError(f"Worksheet index {self.worksheet_ref} out of range")
-                elif isinstance(self.worksheet_ref, str):
-                    try:
-                        ws = wb[self.worksheet_ref]
-                    except KeyError:
-                        raise ValueError(f"Worksheet '{self.worksheet_ref}' not found")
+
+            worksheets = []
+
+            if isinstance(self.worksheet_ref, int):
+                # Select by index
+                try:
+                    worksheets = [wb.worksheets[self.worksheet_ref]]
+                except IndexError:
+                    raise ValueError(
+                        f"Worksheet index {self.worksheet_ref} out of range in {file}. "
+                        f"Available indexes: 0..{len(wb.worksheets) - 1}"
+                    )
+
+            elif isinstance(self.worksheet_ref, str):
+                # 1. Exact match
+                if self.worksheet_ref in wb.sheetnames:
+                    worksheets = [wb[self.worksheet_ref]]
                 else:
-                    raise ValueError("Excel format requires worksheet (name or index)")
-            except KeyError:
-                raise ValueError(f"Worksheet '{self.worksheet_ref}' not found in {file}")
-            for row in ws.iter_rows(min_row=self.skip_rows + 1, values_only=True):
-                yield row
+                    # 2. Glob or regex match → collect ALL matches
+                    pattern = self.worksheet_ref
+
+                    if any(ch in pattern for ch in ["*", "?"]):
+                        regex = re.compile(fnmatch.translate(pattern))
+                    else:
+                        regex = re.compile(pattern)
+
+                    matches = [name for name in wb.sheetnames if regex.match(name)]
+                    if not matches:
+                        raise ValueError(
+                            f"No worksheets match '{pattern}' in {file}. "
+                            f"Available: {wb.sheetnames}"
+                        )
+                    worksheets = [wb[name] for name in matches]
+
+            else:
+                raise ValueError(
+                    "Excel format requires worksheet to be an integer (index), "
+                    "a string (name), or a pattern (glob/regex)."
+                )
+
+            # Yield rows from all matched worksheets
+            for ws in worksheets:
+                for row in ws.iter_rows(min_row=self.skip_rows + 1, values_only=True):
+                    yield row
 
     def _iter_csv(self, file: str):
         with self.storage.open(file, "rt") as fh:

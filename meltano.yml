@@ -25,7 +25,7 @@ plugins:
             List of file configurations. Each entry is an object with keys:
             - path (string): Glob expression (local or S3).
             - format (string): 'excel' or 'csv'.
-            - worksheet (string): Worksheet index or name (Excel only).
+            - worksheet (string): Worksheet index, name or regular expression (Excel only). Using regular expressions, any matching worksheet will be processed.
             - table_name (string): Optional stream name (defaults to file name).
             - primary_keys (array): List of PK column names.
             - drop_empty (boolean): Drop rows with empty/null PKs.
@@ -48,6 +48,15 @@ plugins:
             primary_keys: [date, total]
             drop_empty: true
             worksheet: Sheet2
+            skip_columns: 1
+            skip_rows: 4
+
+          - path: data/*.xlsx
+            format: excel
+            table_name: test
+            primary_keys: [date, total]
+            drop_empty: true
+            worksheet: "report_20[0-9]{2}"
             skip_columns: 1
             skip_rows: 4
 

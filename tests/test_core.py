@@ -22,7 +22,7 @@ EXCEL_CONFIG = {
     ]
 }
 
-EXCEL_CONFIG2 = {
+EXCEL_CONFIG_SKIP_CELLS = {
     "files": [
         {
             "path": EXCEL_FILE,
@@ -31,6 +31,18 @@ EXCEL_CONFIG2 = {
             "primary_keys": ["date"],
             "skip_columns": 1,
             "skip_rows": 4,
+        }
+    ]
+}
+
+# Regex worksheet matching config
+EXCEL_REGEX_CONFIG = {
+    "files": [
+        {
+            "path": EXCEL_FILE,
+            "format": "excel",
+            "worksheet": r"report_20[0-9]{2}",
+            "primary_keys": ["date"],
         }
     ]
 }
@@ -66,14 +78,25 @@ def test_excel_schema_headers():
     schema_props = streams[0].schema["properties"]
     for expected in ["date", "value", "random", "total"]:
         assert expected in schema_props
-def test_excel_schema_headers2():
-    tap = TapSpreadsheets(config=EXCEL_CONFIG2)
+
+def test_excel_schema_headers_skip_cells():
+    tap = TapSpreadsheets(config=EXCEL_CONFIG_SKIP_CELLS)
     streams = tap.discover_streams()
     assert len(streams) == 1
     schema_props = streams[0].schema["properties"]
     for expected in ["date", "value", "random", "total"]:
         assert expected in schema_props
 
+def test_excel_regex_worksheet_match():
+    """Ensure regex worksheet pattern matches multiple years like report_2023, report_2024."""
+    tap = TapSpreadsheets(config=EXCEL_REGEX_CONFIG)
+    streams = tap.discover_streams()
+    assert len(streams) == 1
+    records = list(streams[0].get_records(context=None))
+    # Should yield at least one record if any matching sheet exists
+    assert len(records) > 0
+    # All expected headers should exist
+    assert set(records[0].keys()) == {"date", "value", "random", "total"}
 
 def test_csv_schema_headers():
     tap = TapSpreadsheets(config=CSV_CONFIG)

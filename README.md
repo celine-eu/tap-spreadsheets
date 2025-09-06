@@ -53,7 +53,7 @@ A full list of supported settings and capabilities is available by running: `tap
 `files` (array) List of file configurations. Each entry is an object with keys:
 - `path` (string): Glob expression (local or S3).
 - `format` (string): 'excel' or 'csv'.
-- `worksheet` (string): Worksheet index or name (Excel only).
+- `worksheet` (string): Worksheet index, name or regular expression (Excel only). Using regular expressions, any matching worksheet will be processed.
 - `table_name` (string): Optional stream name (defaults to file name).
 - `primary_keys` (array): List of PK column names.
 - `drop_empty` (boolean): Drop rows with empty/null PKs.
