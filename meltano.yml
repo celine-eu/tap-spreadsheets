@@ -1,0 +1,72 @@
+version: 1
+send_anonymous_usage_stats: true
+project_id: "tap-spreadsheets"
+default_environment: test
+venv:
+  backend: uv
+environments:
+  - name: test
+plugins:
+  extractors:
+    - name: tap-spreadsheets
+      namespace: tap_spreadsheets
+      pip_url: -e .
+      capabilities:
+        - state
+        - catalog
+        - discover
+        - about
+        - stream-maps
+      settings:
+        - name: files
+          kind: array
+          label: Files
+          description: >
+            List of file configurations. Each entry is an object with keys:
+            - path (string): Glob expression (local or S3).
+            - format (string): 'excel' or 'csv'.
+            - worksheet (string): Worksheet index or name (Excel only).
+            - table_name (string): Optional stream name (defaults to file name).
+            - primary_keys (array): List of PK column names.
+            - drop_empty (boolean): Drop rows with empty/null PKs.
+            - skip_columns (integer): Number of leading columns to skip.
+            - skip_rows (integer): Rows to skip before headers.
+            - sample_rows (integer): Rows to sample for schema inference.
+            - column_headers (array): Explicit column headers.
+            - delimiter (string): CSV delimiter, default ','. Inferred if not provided.
+            - quotechar (string): CSV quote char, default '"'. Inferred if not provided.
+
+      settings_group_validation:
+        - [files]
+
+      # TODO: Declare default configuration values here:
+      config:
+        files:
+          - path: data/*.xlsx
+            format: excel
+            table_name: test
+            primary_keys: [date, total]
+            drop_empty: true
+            worksheet: Sheet2
+            skip_columns: 1
+            skip_rows: 4
+
+          # - path: data/*.xlsx
+          # format: excel
+          # worksheet: Sheet2
+          # table_name: excel_table
+          # primary_keys: [date, total]
+          # drop_empty: true
+          # skip_columns: 1
+          # skip_rows: 4
+          # - path: s3://my-bucket/reports/*.csv
+          # format: csv
+          # table_name: csv_reports
+          # primary_keys: [id]
+          # delimiter: ";"
+          # quotechar: "'"
+
+  loaders:
+    - name: target-jsonl
+      variant: andyh1203
+      pip_url: target-jsonl
