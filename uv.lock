@@ -264,64 +264,6 @@ wheels = [
 ]
 
 [[package]]
-name = "tap-spreadsheets"
-version = "0.0.1"
-source = { editable = "." }
-dependencies = [
-    { name = "openpyxl" },
-    { name = "singer-sdk", extra = ["faker"] },
-]
-
-[package.optional-dependencies]
-s3 = [
-    { name = "s3fs" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "meltano" },
-    { name = "pytest" },
-    { name = "pytest-github-actions-annotate-failures" },
-    { name = "singer-sdk", extra = ["testing"] },
-]
-test = [
-    { name = "pytest" },
-    { name = "pytest-github-actions-annotate-failures" },
-    { name = "singer-sdk", extra = ["testing"] },
-]
-typing = [
-    { name = "mypy" },
-    { name = "ty" },
-    { name = "types-requests" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "openpyxl", specifier = ">=3.1.5" },
-    { name = "s3fs", marker = "extra == 's3'", specifier = "~=2025.7.0" },
-    { name = "singer-sdk", extras = ["faker"], specifier = "~=0.48.1" },
-]
-provides-extras = ["s3"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "meltano", specifier = ">=3.9.1" },
-    { name = "pytest", specifier = ">=8" },
-    { name = "pytest-github-actions-annotate-failures", specifier = ">=0.3" },
-    { name = "singer-sdk", extras = ["testing"] },
-]
-test = [
-    { name = "pytest", specifier = ">=8" },
-    { name = "pytest-github-actions-annotate-failures", specifier = ">=0.3" },
-    { name = "singer-sdk", extras = ["testing"] },
-]
-typing = [
-    { name = "mypy", specifier = ">=1.16.0" },
-    { name = "ty", specifier = ">=0.0.1a16" },
-    { name = "types-requests" },
-]
-
-[[package]]
 name = "certifi"
 version = "2025.8.3"
 source = { registry = "https://pypi.org/simple" }
@@ -639,11 +581,11 @@ wheels = [
 
 [[package]]
 name = "fsspec"
-version = "2025.7.0"
+version = "2025.9.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/8b/02/0835e6ab9cfc03916fe3f78c0956cfcdb6ff2669ffa6651065d5ebf7fc98/fsspec-2025.7.0.tar.gz", hash = "sha256:786120687ffa54b8283d942929540d8bc5ccfa820deb555a2b5d0ed2b737bf58", size = 304432, upload-time = "2025-07-15T16:05:21.19Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/de/e0/bab50af11c2d75c9c4a2a26a5254573c0bd97cea152254401510950486fa/fsspec-2025.9.0.tar.gz", hash = "sha256:19fd429483d25d28b65ec68f9f4adc16c17ea2c7c7bf54ec61360d478fb19c19", size = 304847, upload-time = "2025-09-02T19:10:49.215Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2f/e0/014d5d9d7a4564cf1c40b5039bc882db69fd881111e03ab3657ac0b218e2/fsspec-2025.7.0-py3-none-any.whl", hash = "sha256:8b012e39f63c7d5f10474de957f3ab793b47b45ae7d39f2fb735f8bbe25c0e21", size = 199597, upload-time = "2025-07-15T16:05:19.529Z" },
+    { url = "https://files.pythonhosted.org/packages/47/71/70db47e4f6ce3e5c37a607355f80da8860a33226be640226ac52cb05ef2e/fsspec-2025.9.0-py3-none-any.whl", hash = "sha256:530dc2a2af60a414a832059574df4a6e10cce927f6f4a78209390fe38955cfb7", size = 199289, upload-time = "2025-09-02T19:10:47.708Z" },
 ]
 
 [[package]]
@@ -1763,16 +1705,16 @@ wheels = [
 
 [[package]]
 name = "s3fs"
-version = "2025.7.0"
+version = "2025.9.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiobotocore" },
     { name = "aiohttp" },
     { name = "fsspec" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/bf/13/37438c4672ba1d23ec46df0e4b57e98469e5c5f4f98313cf6842b631652b/s3fs-2025.7.0.tar.gz", hash = "sha256:5e7f9ec0cad7745155e3eb86fae15b1481fa29946bf5b3a4ce3a60701ce6022d", size = 77795, upload-time = "2025-07-15T16:35:22.177Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ee/f3/8e6371436666aedfd16e63ff68a51b8a8fcf5f33a0eee33c35e0b2476b27/s3fs-2025.9.0.tar.gz", hash = "sha256:6d44257ef19ea64968d0720744c4af7a063a05f5c1be0e17ce943bef7302bc30", size = 77823, upload-time = "2025-09-02T19:18:21.781Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ff/c7/30d13b7fd4f866ca3f30e9a6e7ae038f0c45226f6e26b3cc98d6d197f93b/s3fs-2025.7.0-py3-none-any.whl", hash = "sha256:b6b2d3f84b6aa1c2ba5e62e39dd9410cf54f10a2cce1ea6db1ba0d1a6bcce685", size = 30315, upload-time = "2025-07-15T16:35:20.734Z" },
+    { url = "https://files.pythonhosted.org/packages/37/b3/ca7d58ca25b1bb6df57e6cbd0ca8d6437a4b9ce1cd35adc8a6b2949c113b/s3fs-2025.9.0-py3-none-any.whl", hash = "sha256:c33c93d48f66ed440dbaf6600be149cdf8beae4b6f8f0201a209c5801aeb7e30", size = 30319, upload-time = "2025-09-02T19:18:20.563Z" },
 ]
 
 [[package]]
@@ -1981,6 +1923,64 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/79/b9/6e672db4fec07349e7a8a8172c1a6ae235c58679ca29c3f86a61b5e59ff3/structlog-25.4.0.tar.gz", hash = "sha256:186cd1b0a8ae762e29417095664adf1d6a31702160a46dacb7796ea82f7409e4", size = 1369138, upload-time = "2025-06-02T08:21:12.971Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a0/4a/97ee6973e3a73c74c8120d59829c3861ea52210667ec3e7a16045c62b64d/structlog-25.4.0-py3-none-any.whl", hash = "sha256:fe809ff5c27e557d14e613f45ca441aabda051d119ee5a0102aaba6ce40eed2c", size = 68720, upload-time = "2025-06-02T08:21:11.43Z" },
+]
+
+[[package]]
+name = "tap-spreadsheets"
+version = "0.0.1"
+source = { editable = "." }
+dependencies = [
+    { name = "openpyxl" },
+    { name = "singer-sdk", extra = ["faker"] },
+]
+
+[package.optional-dependencies]
+s3 = [
+    { name = "s3fs" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "meltano" },
+    { name = "pytest" },
+    { name = "pytest-github-actions-annotate-failures" },
+    { name = "singer-sdk", extra = ["testing"] },
+]
+test = [
+    { name = "pytest" },
+    { name = "pytest-github-actions-annotate-failures" },
+    { name = "singer-sdk", extra = ["testing"] },
+]
+typing = [
+    { name = "mypy" },
+    { name = "ty" },
+    { name = "types-requests" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "openpyxl", specifier = ">=3.1.5" },
+    { name = "s3fs", marker = "extra == 's3'", specifier = "~=2025.9.0" },
+    { name = "singer-sdk", extras = ["faker"], specifier = "~=0.48.1" },
+]
+provides-extras = ["s3"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "meltano", specifier = ">=3.9.1" },
+    { name = "pytest", specifier = ">=8" },
+    { name = "pytest-github-actions-annotate-failures", specifier = ">=0.3" },
+    { name = "singer-sdk", extras = ["testing"] },
+]
+test = [
+    { name = "pytest", specifier = ">=8" },
+    { name = "pytest-github-actions-annotate-failures", specifier = ">=0.3" },
+    { name = "singer-sdk", extras = ["testing"] },
+]
+typing = [
+    { name = "mypy", specifier = ">=1.16.0" },
+    { name = "ty", specifier = ">=0.0.1a16" },
+    { name = "types-requests" },
 ]
 
 [[package]]
