@@ -92,12 +92,21 @@ class SpreadsheetStream(Stream):
             return th.NumberType()
         return th.StringType()
 
-    def _coerce_value(self, v: t.Any) -> t.Any:
-        """Coerce cell values into JSON-serializable types."""
+    def _coerce_value(self, v: t.Any, expected_type: str | None = None) -> t.Any:
         if v is None:
             return None
         if isinstance(v, Decimal):
             return float(v)
+        if expected_type == "integer":
+            try:
+                return int(v)
+            except Exception:
+                return None
+        if expected_type == "number":
+            try:
+                return float(v)
+            except Exception:
+                return None
         if isinstance(v, (datetime, date, time)):
             return v.isoformat()
         if isinstance(v, timedelta):
@@ -298,11 +307,20 @@ class SpreadsheetStream(Stream):
                 if self.format == "excel"
                 else self._iter_csv(file)
             )
+
+            expected_types = {
+                name: schema_def.get("type", ["string"])
+                for name, schema_def in self.schema["properties"].items()
+            }
+
             for row in rows:
                 record = {
-                    h: self._coerce_value(row[i + self.skip_columns])
-                    if i + self.skip_columns < len(row)
-                    else None
+                    h: self._coerce_value(
+                        row[i + self.skip_columns] if i + self.skip_columns < len(row) else None,
+                        "integer" if "integer" in expected_types.get(h, []) else
+                        "number" if "number" in expected_types.get(h, []) else
+                        "string"
+                    )
                     for i, h in enumerate(headers)
                 }
                 if self.drop_empty and any(record.get(pk) in (None, "") for pk in self.primary_keys):
