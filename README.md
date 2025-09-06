@@ -71,17 +71,15 @@ A full list of supported settings and capabilities is available by running: `tap
         files:
           - path: data/*.xlsx
             format: excel
-            table_name: test
-            primary_keys: [date, total]
+            # table_name: test_sheet1
+            primary_keys: [date]
             drop_empty: true
-            worksheet: Sheet2
-            skip_columns: 1
-            skip_rows: 4
+            worksheet: Sheet1
 
           - path: data/*.xlsx
           format: excel
           worksheet: Sheet2
-          table_name: excel_table
+          table_name: my_xlsx_sheet2
           primary_keys: [date, total]
           drop_empty: true
           skip_columns: 1
