@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import typing as t
-import fsspec
+from fsspec.core import url_to_fs
 
 
 class Storage:
@@ -11,7 +11,7 @@ class Storage:
 
     def __init__(self, path_glob: str, protocol: str | None = None) -> None:
         self.path_glob = path_glob
-        self.fs, _ = fsspec.core.url_to_fs(path_glob)
+        self.fs, _ = url_to_fs(path_glob)
 
     def glob(self) -> list[str]:
         """Return matching files for glob."""

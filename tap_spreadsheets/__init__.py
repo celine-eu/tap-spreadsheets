@@ -1,1 +1,1 @@
-"""Tap for Excel."""
+"""Tap for spreadsheets."""

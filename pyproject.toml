@@ -62,6 +62,7 @@ addopts = [
 
 [tool.mypy]
 warn_unused_configs = true
+ignore_missing_imports = true
 
 [tool.ruff.lint]
 ignore = [
@@ -103,7 +104,7 @@ pass_env = [
     "GITHUB_*",
     "TAP_SPREADSHEETS_*",
 ]
-dependency_groups = [ "test" ]
+dependency_groups = [ "test", "typing" ]
 commands = [ [ "pytest", { replace = "posargs", default = [ "tests" ], extend = true } ] ]
 
 [tool.tox.env.typing]
@@ -112,3 +113,5 @@ commands = [
     [ "mypy", { replace = "posargs", default = [ "tap_spreadsheets", "tests" ], extend = true } ],
     [ "ty", "check", { replace = "posargs", default = [ "tap_spreadsheets", "tests" ], extend = true } ],
 ]
+
+
