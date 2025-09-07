@@ -35,6 +35,7 @@ plugins:
             - column_headers (array): Explicit column headers.
             - delimiter (string): CSV delimiter, default ','. Inferred if not provided.
             - quotechar (string): CSV quote char, default '"'. Inferred if not provided.
+            - schema_overrides (dict): overrride JSON schema definition per field. Eg. { my_column_name: { type: [string, "null"] } }
 
       settings_group_validation:
         - [files]
@@ -48,6 +49,9 @@ plugins:
             primary_keys: [date, total]
             drop_empty: true
             worksheet: Sheet1
+            schema_overrides:
+              total:
+                type: [string, "null"]
 
           # - path: data/*.xlsx
           #   format: excel

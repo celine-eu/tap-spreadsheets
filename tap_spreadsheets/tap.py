@@ -45,6 +45,12 @@ class TapSpreadsheets(Tap):
                         description="Number of worker processes to use per stream. "
                                     "If >1, files are processed in parallel but results are ordered by filename.",
                     ),
+                    th.Property(
+                        "schema_overrides",
+                        th.ObjectType,
+                        default={},
+                        description="Override columns JSON schema definition.",
+                    ),
                 )
             ),
             required=True,

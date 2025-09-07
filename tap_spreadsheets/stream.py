@@ -117,8 +117,6 @@ class SpreadsheetStream(Stream):
     def _coerce_value(self, v: t.Any, expected_type: str | None = None) -> t.Any:
         if v is None:
             return None
-        if isinstance(v, Decimal):
-            return float(v)
         if expected_type == "integer":
             try:
                 return int(v)
@@ -129,11 +127,16 @@ class SpreadsheetStream(Stream):
                 return float(v)
             except Exception:
                 return None
+        if expected_type == "string":
+            return str(v)  
+        if isinstance(v, Decimal):
+            return float(v)
         if isinstance(v, (datetime, date, time)):
             return v.isoformat()
         if isinstance(v, timedelta):
             return v.total_seconds()
         return v
+
 
     def _extract_headers_excel(self, file: str) -> list[str]:
         with self.storage.open(file, "rb") as fh:
@@ -312,6 +315,18 @@ class SpreadsheetStream(Stream):
         self._schema = th.PropertiesList(
             *(th.Property(name.lower(), tpe) for name, tpe in types.items())
         ).to_dict()
+
+        overrides = self.file_cfg.get("schema_overrides", {})
+        for col, props in overrides.items():
+            if col in self._schema["properties"]:
+                # Fix: replace Python None with the JSON Schema string "null"
+                if "type" in props:
+                    props["type"] = [
+                        "null" if t is None else t
+                        for t in props["type"]
+                    ]
+                self._schema["properties"][col].update(props)
+
         return self._schema
 
     def get_records(self, context: Context | None) -> t.Iterable[dict]:
