@@ -38,6 +38,13 @@ class TapSpreadsheets(Tap):
                     th.Property("skip_rows", th.IntegerType, default=0, description="Rows to skip before headers."),
                     th.Property("sample_rows", th.IntegerType, default=100, description="Rows to sample for schema inference."),
                     th.Property("column_headers", th.ArrayType(th.StringType), description="Explicit headers (optional)."),
+                    th.Property(
+                        "parallelize",
+                        th.IntegerType,
+                        default=1,
+                        description="Number of worker processes to use per stream. "
+                                    "If >1, files are processed in parallel but results are ordered by filename.",
+                    ),
                 )
             ),
             required=True,

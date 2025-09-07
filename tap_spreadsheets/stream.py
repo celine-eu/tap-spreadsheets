@@ -12,7 +12,7 @@ from singer_sdk import typing as th
 from logging import getLogger
 from decimal import Decimal
 from datetime import datetime, date, time, timedelta
-
+from concurrent.futures import ProcessPoolExecutor
 from tap_spreadsheets.storage import Storage
 
 if t.TYPE_CHECKING:
@@ -20,6 +20,28 @@ if t.TYPE_CHECKING:
 
 logger = getLogger(__name__)
 
+
+def _process_file_worker(args):
+    """Worker to parse a file into records (picklable for ProcessPoolExecutor)."""
+    cfg, file, headers, expected_types = args
+    stream = cfg["stream"]
+
+    rows = stream._iter_excel(file) if stream.format == "excel" else stream._iter_csv(file)
+    records = []
+    for row in rows:
+        record = {
+            h: stream._coerce_value(
+                row[i + stream.skip_columns] if i + stream.skip_columns < len(row) else None,
+                "integer" if "integer" in expected_types.get(h, []) else
+                "number" if "number" in expected_types.get(h, []) else
+                "string"
+            )
+            for i, h in enumerate(headers)
+        }
+        if stream.drop_empty and any(record.get(pk) in (None, "") for pk in stream.primary_keys):
+            continue
+        records.append(record)
+    return file, records
 
 class SpreadsheetStream(Stream):
     """Stream class for spreadsheet (CSV/Excel) files."""
@@ -294,31 +316,31 @@ class SpreadsheetStream(Stream):
 
     def get_records(self, context: Context | None) -> t.Iterable[dict]:
         if not self._headers:
-            _ = self.schema  # ensures headers are set
+            _ = self.schema
         headers = self._headers
 
-        for file in self._get_files():
-            rows = (
-                self._iter_excel(file)
-                if self.format == "excel"
-                else self._iter_csv(file)
-            )
+        files = sorted(self._get_files())
+        parallelize = max(1, self.file_cfg.get("parallelize", 1))
 
-            expected_types = {
-                name: schema_def.get("type", ["string"])
-                for name, schema_def in self.schema["properties"].items()
-            }
+        expected_types = {
+            name: schema_def.get("type", ["string"])
+            for name, schema_def in self.schema["properties"].items()
+        }
 
-            for row in rows:
-                record = {
-                    h: self._coerce_value(
-                        row[i + self.skip_columns] if i + self.skip_columns < len(row) else None,
-                        "integer" if "integer" in expected_types.get(h, []) else
-                        "number" if "number" in expected_types.get(h, []) else
-                        "string"
-                    )
-                    for i, h in enumerate(headers)
-                }
-                if self.drop_empty and any(record.get(pk) in (None, "") for pk in self.primary_keys):
-                    continue
-                yield record
+        if parallelize == 1:
+            # Sequential fallback
+            for f in files:
+                logger.info(f"Processing {f}")
+                _, recs = _process_file_worker(({"stream": self}, f, headers, expected_types))
+                logger.info(f"Syncing {f} ({len(recs)} records)")
+                yield from recs
+        else:
+            with ProcessPoolExecutor(max_workers=parallelize) as ex:
+                futures = [
+                    ex.submit(_process_file_worker, ({"stream": self}, f, headers, expected_types))
+                    for f in files
+                ]
+                for fut in futures:  # iterate in order
+                    fname, recs = fut.result()
+                    logger.info(f"Syncing {fname} ({len(recs)} records)")
+                    yield from recs
