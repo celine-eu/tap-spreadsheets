@@ -53,38 +53,38 @@ plugins:
               total:
                 type: [string, "null"]
 
-          # - path: data/*.xlsx
-          #   format: excel
-          #   table_name: test_skip
-          #   primary_keys: [date, total]
-          #   drop_empty: true
-          #   worksheet: Sheet2
-          #   skip_columns: 1
-          #   skip_rows: 4
+          - path: data/*.xlsx
+            format: excel
+            table_name: test_skip
+            primary_keys: [date, total]
+            drop_empty: true
+            worksheet: Sheet2
+            skip_columns: 1
+            skip_rows: 4
 
-          # - path: data/*.xlsx
-          #   format: excel
-          #   table_name: test_regex
-          #   primary_keys: [date, total]
-          #   drop_empty: true
-          #   worksheet: "report_[0-9]+"
+          - path: data/*.xlsx
+            format: excel
+            table_name: test_regex
+            primary_keys: [date, total]
+            drop_empty: true
+            worksheet: "report_[0-9]+"
 
-          # - path: data/*.xlsx
-          # format: excel
-          # worksheet: Sheet2
-          # table_name: excel_table
-          # primary_keys: [date, total]
-          # drop_empty: true
-          # skip_columns: 1
-          # skip_rows: 4
+          - path: data/*.xlsx
+            format: excel
+            worksheet: Sheet2
+            table_name: excel_table
+            primary_keys: [date, total]
+            drop_empty: true
+            skip_columns: 1
+            skip_rows: 4
 
-          # - path: s3://my-bucket/reports/*.csv
-          # format: csv
-          # table_name: csv_reports
-          # primary_keys: [id]
-          # delimiter: ";"
-          # quotechar: "'"
-          # parallelize: 4
+        # - path: s3://my-bucket/reports/*.csv
+        # format: csv
+        # table_name: csv_reports
+        # primary_keys: [id]
+        # delimiter: ";"
+        # quotechar: "'"
+        # parallelize: 4
 
   loaders:
     - name: target-jsonl

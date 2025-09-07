@@ -47,7 +47,7 @@ class TapSpreadsheets(Tap):
                     ),
                     th.Property(
                         "schema_overrides",
-                        th.ObjectType,
+                        th.ObjectType(additional_properties=True),
                         default={},
                         description="Override columns JSON schema definition.",
                     ),

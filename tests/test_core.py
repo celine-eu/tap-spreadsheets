@@ -96,7 +96,7 @@ def test_excel_regex_worksheet_match():
     # Should yield at least one record if any matching sheet exists
     assert len(records) > 0
     # All expected headers should exist
-    assert set(records[0].keys()) == {"date", "value", "random", "total"}
+    assert set(records[0].keys()) == {"date", "value", "random", "total", "updated_at"}
 
 def test_csv_schema_headers():
     tap = TapSpreadsheets(config=CSV_CONFIG)
@@ -113,7 +113,7 @@ def test_excel_records_not_empty():
     records = list(streams[0].get_records(context=None))
     assert len(records) > 0
     # Keys match expected headers
-    assert set(records[0].keys()) == {"date", "value", "random", "total", "comments_and_notes"}
+    assert set(records[0].keys()) == {"date", "value", "random", "total", "comments_and_notes", "updated_at"}
 
 
 def test_csv_records_not_empty():
@@ -121,4 +121,4 @@ def test_csv_records_not_empty():
     streams = tap.discover_streams()
     records = list(streams[0].get_records(context=None))
     assert len(records) > 0
-    assert set(records[0].keys()) == {"date", "value", "random", "total"}
+    assert set(records[0].keys()) == {"date", "value", "random", "total", "updated_at"}

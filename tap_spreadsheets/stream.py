@@ -11,9 +11,10 @@ from singer_sdk.streams import Stream
 from singer_sdk import typing as th
 from logging import getLogger
 from decimal import Decimal
-from datetime import datetime, date, time, timedelta
+from datetime import datetime, date, time, timedelta, timezone
 from concurrent.futures import ProcessPoolExecutor
 from tap_spreadsheets.storage import Storage
+import os
 
 if t.TYPE_CHECKING:
     from singer_sdk.helpers.types import Context
@@ -46,7 +47,10 @@ def _process_file_worker(args):
 class SpreadsheetStream(Stream):
     """Stream class for spreadsheet (CSV/Excel) files."""
 
+    is_sorted = True
+    
     def __init__(self, tap, file_cfg: dict) -> None:
+
         self.file_cfg = file_cfg
         self.path_glob: str = file_cfg["path"]
         self.format: str = file_cfg["format"].lower()
@@ -60,6 +64,10 @@ class SpreadsheetStream(Stream):
 
         super().__init__(tap, name=self.table_name)
 
+        self.state_partitioning_keys = ["filename"]
+        self.replication_key = "updated_at"
+        self.forced_replication_method = "INCREMENTAL"
+
         self.primary_keys = [n.lower() for n in file_cfg.get("primary_keys", [])]
         self.drop_empty = file_cfg.get("drop_empty", True)
         self.skip_columns = file_cfg.get("skip_columns", 0)
@@ -70,6 +78,7 @@ class SpreadsheetStream(Stream):
         self._schema = None
         self._headers: list[str] = []
         self.storage = Storage(self.path_glob)
+
 
     def _stem_header(self, h: t.Any, idx: int) -> str:
         """Normalize header names to safe identifiers."""
@@ -313,7 +322,8 @@ class SpreadsheetStream(Stream):
             types[h] = self._infer_type(col_values)
 
         self._schema = th.PropertiesList(
-            *(th.Property(name.lower(), tpe) for name, tpe in types.items())
+            *(th.Property(name.lower(), tpe) for name, tpe in types.items()),
+            th.Property(str(self.replication_key), th.DateTimeType(nullable=True), description="Updated date"),
         ).to_dict()
 
         overrides = self.file_cfg.get("schema_overrides", {})
@@ -329,6 +339,14 @@ class SpreadsheetStream(Stream):
 
         return self._schema
 
+    def post_process(self, row: dict, context: Context | None = None) -> dict | None:
+        """Post-Process, i.e. base64 decode the XML."""
+        return {
+            **row,
+            str(self.replication_key): datetime.now(),
+        }
+
+
     def get_records(self, context: Context | None) -> t.Iterable[dict]:
         if not self._headers:
             _ = self.schema
@@ -342,20 +360,44 @@ class SpreadsheetStream(Stream):
             for name, schema_def in self.schema["properties"].items()
         }
 
+        def process_file(f: str):
+            # file partition state
+            partition_context = {"filename": os.path.basename(f)}
+            last_bookmark = self.get_starting_replication_key_value(partition_context)
+
+            mtime = datetime.fromtimestamp(os.path.getmtime(f), tz=timezone.utc)
+
+            # --- skip file if already processed
+            if last_bookmark:
+                bookmark_dt = datetime.fromisoformat(last_bookmark)
+                if bookmark_dt.tzinfo is None:
+                    bookmark_dt = bookmark_dt.replace(tzinfo=timezone.utc)
+                if mtime <= bookmark_dt:
+                    logger.info("Skipping %s (mtime=%s <= bookmark=%s)", f, mtime, bookmark_dt)
+                    return []
+
+            # process rows
+            _, recs = _process_file_worker(({"stream": self}, f, headers, expected_types))
+            logger.info("Syncing %s (%d records)", f, len(recs))
+
+            # attach replication key (per record)
+            for r in recs:
+                r[self.replication_key] = mtime
+
+            # advance bookmark for this file
+            if recs:
+                self._increment_stream_state(
+                    {"updated_at": mtime.isoformat()},
+                    context=partition_context,
+                )
+
+            return recs
+
         if parallelize == 1:
-            # Sequential fallback
             for f in files:
-                logger.info(f"Processing {f}")
-                _, recs = _process_file_worker(({"stream": self}, f, headers, expected_types))
-                logger.info(f"Syncing {f} ({len(recs)} records)")
-                yield from recs
+                yield from process_file(f)
         else:
             with ProcessPoolExecutor(max_workers=parallelize) as ex:
-                futures = [
-                    ex.submit(_process_file_worker, ({"stream": self}, f, headers, expected_types))
-                    for f in files
-                ]
-                for fut in futures:  # iterate in order
-                    fname, recs = fut.result()
-                    logger.info(f"Syncing {fname} ({len(recs)} records)")
+                results = list(ex.map(process_file, files))
+                for recs in results:
                     yield from recs
