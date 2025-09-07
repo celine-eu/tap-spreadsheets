@@ -76,22 +76,23 @@ A full list of supported settings and capabilities is available by running: `tap
             primary_keys: [date]
             drop_empty: true
             worksheet: Sheet1
+            parallelize: 4
 
           - path: data/*.xlsx
-          format: excel
-          worksheet: Sheet2
-          table_name: my_xlsx_sheet2
-          primary_keys: [date, total]
-          drop_empty: true
-          skip_columns: 1
-          skip_rows: 4
+            format: excel
+            worksheet: "Report 20[0-9]{2}"
+            table_name: my_xlsx_sheet2
+            primary_keys: [date, total]
+            drop_empty: true
+            skip_columns: 1
+            skip_rows: 4
 
           - path: s3://my-bucket/reports/*.csv
-          format: csv
-          table_name: csv_reports
-          primary_keys: [id]
-          delimiter: ";"
-          quotechar: "'"
+            format: csv
+            table_name: csv_reports
+            primary_keys: [id]
+            delimiter: ";"
+            quotechar: "'"
 ```
 
 
