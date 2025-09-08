@@ -1931,6 +1931,7 @@ version = "0.0.1"
 source = { editable = "." }
 dependencies = [
     { name = "openpyxl" },
+    { name = "python-dateutil" },
     { name = "singer-sdk", extra = ["faker"] },
 ]
 
@@ -1960,6 +1961,7 @@ typing = [
 [package.metadata]
 requires-dist = [
     { name = "openpyxl", specifier = ">=3.1.5" },
+    { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "s3fs", marker = "extra == 's3'", specifier = "~=2025.9.0" },
     { name = "singer-sdk", extras = ["faker"], specifier = "~=0.48.1" },
 ]

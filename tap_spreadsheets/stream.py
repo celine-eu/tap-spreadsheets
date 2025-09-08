@@ -15,6 +15,7 @@ from datetime import datetime, date, time, timedelta, timezone
 from concurrent.futures import ProcessPoolExecutor
 from tap_spreadsheets.storage import Storage
 import os
+from dateutil import parser as dateparser
 
 if t.TYPE_CHECKING:
     from singer_sdk.helpers.types import Context
@@ -22,27 +23,93 @@ if t.TYPE_CHECKING:
 logger = getLogger(__name__)
 
 
-def _process_file_worker(args):
-    """Worker to parse a file into records (picklable for ProcessPoolExecutor)."""
-    cfg, file, headers, expected_types = args
-    stream = cfg["stream"]
+def _parse_date_value(value: t.Any, fmt: str | None) -> datetime | None:
+    """Parse a date value with optional explicit format. Always return UTC datetime."""
+    if value is None or value == "":
+        return None
+    try:
+        if fmt:
+            return datetime.strptime(str(value), fmt).replace(tzinfo=timezone.utc)
+        return dateparser.parse(str(value)).astimezone(timezone.utc)
+    except Exception as ex:
+        logger.warning("Failed to parse date value %s: %s", value, ex)
+        return None
 
-    rows = stream._iter_excel(file) if stream.format == "excel" else stream._iter_csv(file)
+def _process_file_with_state(
+    args: tuple["SpreadsheetStream", str, list[str], dict[t.Any, t.Any]],
+):
+    """Worker to parse a file, check state, and return records."""
+    stream, file, headers, expected_types = args
+
+    partition_context = {"filename": os.path.basename(file)}
+    last_bookmark = stream.get_starting_replication_key_value(partition_context)
+
+    bookmark_dt: datetime | None = None
+    if last_bookmark:
+        bookmark_dt = datetime.fromisoformat(last_bookmark)
+        if bookmark_dt.tzinfo is None:
+            bookmark_dt = bookmark_dt.replace(tzinfo=timezone.utc)
+        else:
+            bookmark_dt = bookmark_dt.astimezone(timezone.utc)
+
+    mtime = datetime.fromtimestamp(os.path.getmtime(file), tz=timezone.utc)
+
+    # --- skip file if already processed and no row-level column is defined
+    if not stream.date_column and bookmark_dt and mtime <= bookmark_dt:
+        logger.info(
+            "Skipping %s (mtime=%s <= bookmark=%s)", file, mtime, bookmark_dt
+        )
+        return []
+
+    logger.info("Processing file %s", file)
+    rows = (
+        stream._iter_excel(file) if stream.format == "excel" else stream._iter_csv(file)
+    )
+
     records = []
+    max_seen: datetime | None = None
+
     for row in rows:
         record = {
             h: stream._coerce_value(
                 row[i + stream.skip_columns] if i + stream.skip_columns < len(row) else None,
                 "integer" if "integer" in expected_types.get(h, []) else
-                "number" if "number" in expected_types.get(h, []) else
-                "string"
+                "number" if "number" in expected_types.get(h, []) else "string",
             )
             for i, h in enumerate(headers)
         }
         if stream.drop_empty and any(record.get(pk) in (None, "") for pk in stream.primary_keys):
             continue
+
+        # --- determine replication value
+        if stream.date_column and stream.date_column in record:
+            rep_val = _parse_date_value(record[stream.date_column], stream.date_column_format)
+            if not rep_val:
+                rep_val = mtime
+        else:
+            rep_val = mtime
+
+        # --- skip if not newer
+        if bookmark_dt and rep_val <= bookmark_dt:
+            continue
+
+        record[stream.replication_key] = rep_val
         records.append(record)
-    return file, records
+
+        # track max seen
+        if not max_seen or rep_val > max_seen:
+            max_seen = rep_val
+
+    logger.info("Syncing %s (%d records)", file, len(records))
+
+    # advance bookmark
+    if max_seen:
+        stream._increment_stream_state(
+            {stream.replication_key: max_seen.isoformat()},
+            context=partition_context,
+        )
+
+    return records
 
 class SpreadsheetStream(Stream):
     """Stream class for spreadsheet (CSV/Excel) files."""
@@ -64,9 +131,13 @@ class SpreadsheetStream(Stream):
 
         super().__init__(tap, name=self.table_name)
 
+
         self.state_partitioning_keys = ["filename"]
         self.replication_key = "updated_at"
         self.forced_replication_method = "INCREMENTAL"
+
+        self.date_column = file_cfg.get("date_column")
+        self.date_column_format = file_cfg.get("date_column_format")
 
         self.primary_keys = [n.lower() for n in file_cfg.get("primary_keys", [])]
         self.drop_empty = file_cfg.get("drop_empty", True)
@@ -321,10 +392,29 @@ class SpreadsheetStream(Stream):
             ]
             types[h] = self._infer_type(col_values)
 
-        self._schema = th.PropertiesList(
-            *(th.Property(name.lower(), tpe) for name, tpe in types.items()),
-            th.Property(str(self.replication_key), th.DateTimeType(nullable=True), description="Updated date"),
-        ).to_dict()
+        # build schema with replication key
+        props = [
+            th.Property(name.lower(), tpe) for name, tpe in types.items()
+        ]
+        props.append(
+            th.Property(
+                str(self.replication_key),
+                th.DateTimeType(nullable=True),
+                description="Replication checkpoint (file mtime or row date)",
+            )
+        )
+
+        # --- if date_column is configured, force it as DateTimeType
+        if self.date_column and self.date_column.lower() in types:
+            props.append(
+                th.Property(
+                    self.date_column.lower(),
+                    th.DateTimeType(nullable=True),
+                    description="Row-level date used for incremental sync",
+                )
+            )
+        
+        self._schema = th.PropertiesList(*props).to_dict()
 
         overrides = self.file_cfg.get("schema_overrides", {})
         for col, props in overrides.items():
@@ -343,9 +433,8 @@ class SpreadsheetStream(Stream):
         """Post-Process, i.e. base64 decode the XML."""
         return {
             **row,
-            str(self.replication_key): datetime.now(),
+            str(self.replication_key): datetime.now(timezone.utc),
         }
-
 
     def get_records(self, context: Context | None) -> t.Iterable[dict]:
         if not self._headers:
@@ -360,44 +449,15 @@ class SpreadsheetStream(Stream):
             for name, schema_def in self.schema["properties"].items()
         }
 
-        def process_file(f: str):
-            # file partition state
-            partition_context = {"filename": os.path.basename(f)}
-            last_bookmark = self.get_starting_replication_key_value(partition_context)
-
-            mtime = datetime.fromtimestamp(os.path.getmtime(f), tz=timezone.utc)
-
-            # --- skip file if already processed
-            if last_bookmark:
-                bookmark_dt = datetime.fromisoformat(last_bookmark)
-                if bookmark_dt.tzinfo is None:
-                    bookmark_dt = bookmark_dt.replace(tzinfo=timezone.utc)
-                if mtime <= bookmark_dt:
-                    logger.info("Skipping %s (mtime=%s <= bookmark=%s)", f, mtime, bookmark_dt)
-                    return []
-
-            # process rows
-            _, recs = _process_file_worker(({"stream": self}, f, headers, expected_types))
-            logger.info("Syncing %s (%d records)", f, len(recs))
-
-            # attach replication key (per record)
-            for r in recs:
-                r[self.replication_key] = mtime
-
-            # advance bookmark for this file
-            if recs:
-                self._increment_stream_state(
-                    {"updated_at": mtime.isoformat()},
-                    context=partition_context,
-                )
-
-            return recs
-
         if parallelize == 1:
             for f in files:
-                yield from process_file(f)
+                recs = _process_file_with_state((self, f, headers, expected_types))
+                yield from recs
         else:
             with ProcessPoolExecutor(max_workers=parallelize) as ex:
-                results = list(ex.map(process_file, files))
-                for recs in results:
+                for recs in ex.map(
+                    _process_file_with_state,
+                    [(self, f, headers, expected_types) for f in files],
+                ):
+                    # recs is ready as soon as the worker finishes one file
                     yield from recs

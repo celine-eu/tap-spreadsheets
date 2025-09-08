@@ -33,6 +33,8 @@ class TapSpreadsheets(Tap):
                     th.Property("worksheet", th.StringType, description="Worksheet index or name (Excel only)."),
                     th.Property("table_name", th.StringType, description="Optional table/stream name. Defaults to file name."),
                     th.Property("primary_keys", th.ArrayType(th.StringType), description="Primary key columns."),
+                    th.Property("date_column", th.StringType, description="Date column to use as replication key"),
+                    th.Property("date_column_format", th.StringType, description="Date column format, in strptime format (e.g. %Y-%m-%d)"),
                     th.Property("drop_empty", th.BooleanType, default=True, description="Drop rows with null PKs."),
                     th.Property("skip_columns", th.IntegerType, default=0, description="Columns to skip."),
                     th.Property("skip_rows", th.IntegerType, default=0, description="Rows to skip before headers."),
