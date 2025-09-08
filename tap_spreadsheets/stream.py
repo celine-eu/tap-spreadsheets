@@ -15,32 +15,18 @@ from datetime import datetime, date, time, timedelta, timezone
 from concurrent.futures import ProcessPoolExecutor
 from tap_spreadsheets.storage import Storage
 import os
-from dateutil import parser as dateparser
 
 if t.TYPE_CHECKING:
     from singer_sdk.helpers.types import Context
 
+INCREMENTAL_KEY = "__updated_at"
+
 logger = getLogger(__name__)
-
-
-def _parse_date_value(value: t.Any, fmt: str | None) -> datetime | None:
-    """Parse a date value with optional explicit format. Always return UTC datetime."""
-    if value is None or value == "":
-        return None
-    try:
-        if fmt:
-            return datetime.strptime(str(value), fmt).replace(tzinfo=timezone.utc)
-        return dateparser.parse(str(value)).astimezone(timezone.utc)
-    except Exception as ex:
-        logger.warning("Failed to parse date value %s: %s", value, ex)
-        return None
 
 def _process_file_with_state(
     args: tuple["SpreadsheetStream", str, list[str], dict[t.Any, t.Any]],
 ):
-    """Worker to parse a file, check state, and return records."""
     stream, file, headers, expected_types = args
-
     partition_context = {"filename": os.path.basename(file)}
     last_bookmark = stream.get_starting_replication_key_value(partition_context)
 
@@ -54,58 +40,60 @@ def _process_file_with_state(
 
     mtime = datetime.fromtimestamp(os.path.getmtime(file), tz=timezone.utc)
 
-    # --- skip file if already processed and no row-level column is defined
-    if not stream.date_column and bookmark_dt and mtime <= bookmark_dt:
-        logger.info(
-            "Skipping %s (mtime=%s <= bookmark=%s)", file, mtime, bookmark_dt
-        )
+    # skip file entirely if mtime <= bookmark
+    if bookmark_dt and mtime <= bookmark_dt:
+        logger.info("Skipping %s (mtime=%s <= bookmark=%s)", file, mtime, bookmark_dt)
         return []
 
-    logger.info("Processing file %s", file)
     rows = (
         stream._iter_excel(file) if stream.format == "excel" else stream._iter_csv(file)
     )
-
     records = []
-    max_seen: datetime | None = None
+    max_row_date: datetime | None = None
 
     for row in rows:
         record = {
             h: stream._coerce_value(
                 row[i + stream.skip_columns] if i + stream.skip_columns < len(row) else None,
-                "integer" if "integer" in expected_types.get(h, []) else
-                "number" if "number" in expected_types.get(h, []) else "string",
+                "integer" if "integer" in expected_types.get(h, [])
+                else "number" if "number" in expected_types.get(h, [])
+                else "string",
             )
             for i, h in enumerate(headers)
         }
         if stream.drop_empty and any(record.get(pk) in (None, "") for pk in stream.primary_keys):
             continue
 
-        # --- determine replication value
+        # attach file mtime
+        record[str(stream.replication_key)] = mtime
+
+        # optional row-level filtering by date_column
         if stream.date_column and stream.date_column in record:
-            rep_val = _parse_date_value(record[stream.date_column], stream.date_column_format)
-            if not rep_val:
-                rep_val = mtime
-        else:
-            rep_val = mtime
+            val = record[stream.date_column]
+            try:
+                row_date = (
+                    datetime.strptime(val, stream.date_column_format)
+                    if stream.date_column_format
+                    else datetime.fromisoformat(val)
+                )
+                row_date = row_date.replace(tzinfo=timezone.utc) if row_date.tzinfo is None else row_date
+                # filter out old rows
+                if bookmark_dt and row_date <= bookmark_dt:
+                    continue
+                if not max_row_date or row_date > max_row_date:
+                    max_row_date = row_date
+            except Exception:
+                pass  # ignore bad dates
 
-        # --- skip if not newer
-        if bookmark_dt and rep_val <= bookmark_dt:
-            continue
-
-        record[stream.replication_key] = rep_val
         records.append(record)
-
-        # track max seen
-        if not max_seen or rep_val > max_seen:
-            max_seen = rep_val
 
     logger.info("Syncing %s (%d records)", file, len(records))
 
-    # advance bookmark
-    if max_seen:
+    # advance bookmark with the latest seen (row_date or file mtime)
+    if records:
+        checkpoint = max(filter(None, [max_row_date, mtime]))
         stream._increment_stream_state(
-            {stream.replication_key: max_seen.isoformat()},
+            {INCREMENTAL_KEY: checkpoint.isoformat()},
             context=partition_context,
         )
 
@@ -133,7 +121,7 @@ class SpreadsheetStream(Stream):
 
 
         self.state_partitioning_keys = ["filename"]
-        self.replication_key = "updated_at"
+        self.replication_key = INCREMENTAL_KEY
         self.forced_replication_method = "INCREMENTAL"
 
         self.date_column = file_cfg.get("date_column")
