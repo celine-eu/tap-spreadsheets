@@ -28,7 +28,8 @@ def _process_file_with_state(
     stream, file, headers, expected_types = args
 
     filename = os.path.basename(file)
-    partition_context = {"filename": filename}
+    partition_name = stream.get_partition_name(filename)
+    partition_context = {SDC_FILENAME: partition_name}
     last_bookmark = stream.get_starting_replication_key_value(partition_context)
 
     bookmark_dt: datetime | None = None
@@ -45,6 +46,10 @@ def _process_file_with_state(
     if bookmark_dt and mtime <= bookmark_dt:
         stream.logger.info(
             "Skipping %s (mtime=%s <= bookmark=%s)", file, mtime, bookmark_dt
+        )
+        stream._increment_stream_state(
+            {SDC_INCREMENTAL_KEY: mtime.isoformat()},
+            context=partition_context,
         )
         return []
 
@@ -76,7 +81,7 @@ def _process_file_with_state(
 
         # attach file mtime and name
         record[SDC_INCREMENTAL_KEY] = mtime
-        record[SDC_FILENAME] = filename
+        record[SDC_FILENAME] = partition_name
 
         records.append(record)
 
@@ -110,7 +115,7 @@ class SpreadsheetStream(Stream):
 
         super().__init__(tap, name=self.table_name)
 
-        self.state_partitioning_keys = ["filename"]
+        self.state_partitioning_keys = [SDC_FILENAME]
         self.replication_key = SDC_INCREMENTAL_KEY
         self.forced_replication_method = "INCREMENTAL"
 
@@ -129,6 +134,11 @@ class SpreadsheetStream(Stream):
     def is_sorted(self) -> bool:
         """The stream returns records in order."""
         return True
+
+    def get_partition_name(self, filename: str):
+        return filename + (
+            f":{self.worksheet_ref}" if self.worksheet_ref is not None else ""
+        )
 
     def _stem_header(self, h: t.Any, idx: int) -> str:
         """Normalize header names to safe identifiers."""

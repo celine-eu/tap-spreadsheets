@@ -77,6 +77,12 @@ plugins:
             skip_columns: 1
             skip_rows: 4
 
+          - path: data/test.csv
+            format: csv
+            table_name: csv
+            primary_keys: [date, total]
+            drop_empty: true
+
         # - path: s3://my-bucket/reports/*.csv
         # format: csv
         # table_name: csv_reports
