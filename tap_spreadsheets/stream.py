@@ -9,7 +9,6 @@ import csv
 from openpyxl import load_workbook
 from singer_sdk.streams import Stream
 from singer_sdk import typing as th
-from logging import getLogger
 from decimal import Decimal
 from datetime import datetime, date, time, timedelta, timezone
 from concurrent.futures import ProcessPoolExecutor
@@ -21,8 +20,6 @@ if t.TYPE_CHECKING:
 
 SDC_INCREMENTAL_KEY = "_sdc_last_modified"
 SDC_FILENAME = "_sdc_filename"
-
-logger = getLogger(__name__)
 
 
 def _process_file_with_state(
@@ -46,7 +43,9 @@ def _process_file_with_state(
 
     # skip file entirely if mtime <= bookmark
     if bookmark_dt and mtime <= bookmark_dt:
-        logger.info("Skipping %s (mtime=%s <= bookmark=%s)", file, mtime, bookmark_dt)
+        stream.logger.info(
+            "Skipping %s (mtime=%s <= bookmark=%s)", file, mtime, bookmark_dt
+        )
         return []
 
     rows = (
@@ -81,7 +80,7 @@ def _process_file_with_state(
 
         records.append(record)
 
-    logger.info("Syncing %s (%d records)", file, len(records))
+    stream.logger.info("Syncing %s (%d records)", file, len(records))
 
     # advance bookmark with the latest seen (row_date or file mtime)
     if records:
@@ -220,7 +219,7 @@ class SpreadsheetStream(Stream):
                     if matches:
                         ws = wb[matches[0]]
             if ws is None:
-                logger.warning(
+                self.logger.warning(
                     "No matching worksheet found in %s. Skipping file.", file
                 )
                 return []  # skip schema for this file
@@ -245,7 +244,7 @@ class SpreadsheetStream(Stream):
                 try:
                     worksheets = [wb.worksheets[self.worksheet_ref]]
                 except IndexError:
-                    logger.warning(
+                    self.logger.warning(
                         "Worksheet index %s out of range in %s. Skipping file.",
                         self.worksheet_ref,
                         file,
@@ -264,7 +263,7 @@ class SpreadsheetStream(Stream):
                     )
                     matches = [name for name in wb.sheetnames if regex.match(name)]
                     if not matches:
-                        logger.warning(
+                        self.logger.warning(
                             "No worksheets match '%s' in %s. Skipping file. Available: %s",
                             pattern,
                             file,
@@ -273,7 +272,7 @@ class SpreadsheetStream(Stream):
                         return  # skip file
                     worksheets = [wb[name] for name in matches]
             else:
-                logger.warning(
+                self.logger.warning(
                     "Invalid worksheet_ref %s. Skipping file %s",
                     self.worksheet_ref,
                     file,
