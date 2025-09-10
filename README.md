@@ -56,8 +56,6 @@ A full list of supported settings and capabilities is available by running: `tap
 - `worksheet` (string, required for type excel): Worksheet index, name or regular expression (Excel only). Using regular expressions, any matching worksheet will be processed.
 - `table_name` (string): Optional stream name (defaults to file name).
 - `primary_keys` (array): List of PK column names.
-- `date_column` (string) Date column to use as replication key
-- `date_column_format` (string) Date column format, in strptime format (e.g. %Y-%m-%d)
 - `drop_empty` (boolean): Drop rows with empty/null PKs.
 - `skip_columns` (integer): Number of leading columns to skip.
 - `skip_rows` (integer): Rows to skip before headers.
