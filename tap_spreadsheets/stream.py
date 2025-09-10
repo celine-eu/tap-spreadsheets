@@ -19,15 +19,19 @@ import os
 if t.TYPE_CHECKING:
     from singer_sdk.helpers.types import Context
 
-INCREMENTAL_KEY = "__updated_at"
+SDC_INCREMENTAL_KEY = "_sdc_last_modified"
+SDC_FILENAME = "_sdc_filename"
 
 logger = getLogger(__name__)
+
 
 def _process_file_with_state(
     args: tuple["SpreadsheetStream", str, list[str], dict[t.Any, t.Any]],
 ):
     stream, file, headers, expected_types = args
-    partition_context = {"filename": os.path.basename(file)}
+
+    filename = os.path.basename(file)
+    partition_context = {"filename": filename}
     last_bookmark = stream.get_starting_replication_key_value(partition_context)
 
     bookmark_dt: datetime | None = None
@@ -49,41 +53,31 @@ def _process_file_with_state(
         stream._iter_excel(file) if stream.format == "excel" else stream._iter_csv(file)
     )
     records = []
-    max_row_date: datetime | None = None
 
     for row in rows:
         record = {
             h: stream._coerce_value(
-                row[i + stream.skip_columns] if i + stream.skip_columns < len(row) else None,
-                "integer" if "integer" in expected_types.get(h, [])
-                else "number" if "number" in expected_types.get(h, [])
-                else "string",
+                (
+                    row[i + stream.skip_columns]
+                    if i + stream.skip_columns < len(row)
+                    else None
+                ),
+                (
+                    "integer"
+                    if "integer" in expected_types.get(h, [])
+                    else "number" if "number" in expected_types.get(h, []) else "string"
+                ),
             )
             for i, h in enumerate(headers)
         }
-        if stream.drop_empty and any(record.get(pk) in (None, "") for pk in stream.primary_keys):
+        if stream.drop_empty and any(
+            record.get(pk) in (None, "") for pk in stream.primary_keys
+        ):
             continue
 
-        # attach file mtime
-        record[str(stream.replication_key)] = mtime
-
-        # optional row-level filtering by date_column
-        if stream.date_column and stream.date_column in record:
-            val = record[stream.date_column]
-            try:
-                row_date = (
-                    datetime.strptime(val, stream.date_column_format)
-                    if stream.date_column_format
-                    else datetime.fromisoformat(val)
-                )
-                row_date = row_date.replace(tzinfo=timezone.utc) if row_date.tzinfo is None else row_date
-                # filter out old rows
-                if bookmark_dt and row_date <= bookmark_dt:
-                    continue
-                if not max_row_date or row_date > max_row_date:
-                    max_row_date = row_date
-            except Exception:
-                pass  # ignore bad dates
+        # attach file mtime and name
+        record[SDC_INCREMENTAL_KEY] = mtime
+        record[SDC_FILENAME] = filename
 
         records.append(record)
 
@@ -91,19 +85,17 @@ def _process_file_with_state(
 
     # advance bookmark with the latest seen (row_date or file mtime)
     if records:
-        checkpoint = max(filter(None, [max_row_date, mtime]))
         stream._increment_stream_state(
-            {INCREMENTAL_KEY: checkpoint.isoformat()},
+            {SDC_INCREMENTAL_KEY: mtime.isoformat()},
             context=partition_context,
         )
 
     return records
 
+
 class SpreadsheetStream(Stream):
     """Stream class for spreadsheet (CSV/Excel) files."""
 
-    is_sorted = True
-    
     def __init__(self, tap, file_cfg: dict) -> None:
 
         self.file_cfg = file_cfg
@@ -119,13 +111,9 @@ class SpreadsheetStream(Stream):
 
         super().__init__(tap, name=self.table_name)
 
-
         self.state_partitioning_keys = ["filename"]
-        self.replication_key = INCREMENTAL_KEY
+        self.replication_key = SDC_INCREMENTAL_KEY
         self.forced_replication_method = "INCREMENTAL"
-
-        self.date_column = file_cfg.get("date_column")
-        self.date_column_format = file_cfg.get("date_column_format")
 
         self.primary_keys = [n.lower() for n in file_cfg.get("primary_keys", [])]
         self.drop_empty = file_cfg.get("drop_empty", True)
@@ -138,6 +126,10 @@ class SpreadsheetStream(Stream):
         self._headers: list[str] = []
         self.storage = Storage(self.path_glob)
 
+    @property
+    def is_sorted(self) -> bool:
+        """The stream returns records in order."""
+        return True
 
     def _stem_header(self, h: t.Any, idx: int) -> str:
         """Normalize header names to safe identifiers."""
@@ -150,6 +142,7 @@ class SpreadsheetStream(Stream):
 
         h = str(h)
         import unicodedata, re
+
         h = unicodedata.normalize("NFKD", h).encode("ascii", "ignore").decode()
         h = h.replace("\n", " ").replace("/", " ")
         h = h.lower()
@@ -196,7 +189,7 @@ class SpreadsheetStream(Stream):
             except Exception:
                 return None
         if expected_type == "string":
-            return str(v)  
+            return str(v)
         if isinstance(v, Decimal):
             return float(v)
         if isinstance(v, (datetime, date, time)):
@@ -204,7 +197,6 @@ class SpreadsheetStream(Stream):
         if isinstance(v, timedelta):
             return v.total_seconds()
         return v
-
 
     def _extract_headers_excel(self, file: str) -> list[str]:
         with self.storage.open(file, "rb") as fh:
@@ -228,7 +220,9 @@ class SpreadsheetStream(Stream):
                     if matches:
                         ws = wb[matches[0]]
             if ws is None:
-                logger.warning("No matching worksheet found in %s. Skipping file.", file)
+                logger.warning(
+                    "No matching worksheet found in %s. Skipping file.", file
+                )
                 return []  # skip schema for this file
 
             header_row = ws.iter_rows(
@@ -237,8 +231,9 @@ class SpreadsheetStream(Stream):
                 values_only=True,
             )
             raw_headers = next(header_row)
-            return [self._stem_header(h, i) for i, h in enumerate(raw_headers)][self.skip_columns :]
-
+            return [self._stem_header(h, i) for i, h in enumerate(raw_headers)][
+                self.skip_columns :
+            ]
 
     def _iter_excel(self, file: str):
         """Iterate data rows (excluding header) from all matched worksheets."""
@@ -252,7 +247,8 @@ class SpreadsheetStream(Stream):
                 except IndexError:
                     logger.warning(
                         "Worksheet index %s out of range in %s. Skipping file.",
-                        self.worksheet_ref, file,
+                        self.worksheet_ref,
+                        file,
                     )
                     return  # skip file
 
@@ -270,19 +266,24 @@ class SpreadsheetStream(Stream):
                     if not matches:
                         logger.warning(
                             "No worksheets match '%s' in %s. Skipping file. Available: %s",
-                            pattern, file, wb.sheetnames,
+                            pattern,
+                            file,
+                            wb.sheetnames,
                         )
                         return  # skip file
                     worksheets = [wb[name] for name in matches]
             else:
-                logger.warning("Invalid worksheet_ref %s. Skipping file %s", self.worksheet_ref, file)
+                logger.warning(
+                    "Invalid worksheet_ref %s. Skipping file %s",
+                    self.worksheet_ref,
+                    file,
+                )
                 return
 
             for ws in worksheets:
                 start_row = self.skip_rows + 2
                 for row in ws.iter_rows(min_row=start_row, values_only=True):
                     yield row
-
 
     def _extract_headers_csv(self, file: str) -> list[str]:
         """Extract and normalize headers from a CSV file."""
@@ -340,7 +341,9 @@ class SpreadsheetStream(Stream):
     def _get_files(self) -> list[str]:
         files = self.storage.glob()
         if not files:
-            raise FileNotFoundError(f"No {self.format} files found for {self.path_glob}")
+            raise FileNotFoundError(
+                f"No {self.format} files found for {self.path_glob}"
+            )
         return files
 
     @property
@@ -356,7 +359,9 @@ class SpreadsheetStream(Stream):
         )
 
         if self.column_headers:
-            headers = [self._stem_header(h, i) for i, h in enumerate(self.column_headers)]
+            headers = [
+                self._stem_header(h, i) for i, h in enumerate(self.column_headers)
+            ]
         else:
             if self.format == "excel":
                 headers = self._extract_headers_excel(sample_file)
@@ -364,7 +369,6 @@ class SpreadsheetStream(Stream):
                 headers = self._extract_headers_csv(sample_file)
 
         self._headers = headers
-
 
         samples = []
         for i, row in enumerate(rows):
@@ -376,32 +380,29 @@ class SpreadsheetStream(Stream):
         for i, h in enumerate(headers):
             col_idx = i + self.skip_columns
             col_values = [
-                r[col_idx] for r in samples if col_idx < len(r) and r[col_idx] not in (None, "")
+                r[col_idx]
+                for r in samples
+                if col_idx < len(r) and r[col_idx] not in (None, "")
             ]
             types[h] = self._infer_type(col_values)
 
         # build schema with replication key
-        props = [
-            th.Property(name.lower(), tpe) for name, tpe in types.items()
-        ]
+        props = [th.Property(name.lower(), tpe) for name, tpe in types.items()]
         props.append(
             th.Property(
-                str(self.replication_key),
+                SDC_INCREMENTAL_KEY,
                 th.DateTimeType(nullable=True),
                 description="Replication checkpoint (file mtime or row date)",
             )
         )
+        props.append(
+            th.Property(
+                SDC_FILENAME,
+                th.StringType(nullable=True),
+                description="Filename reference",
+            ),
+        )
 
-        # --- if date_column is configured, force it as DateTimeType
-        if self.date_column and self.date_column.lower() in types:
-            props.append(
-                th.Property(
-                    self.date_column.lower(),
-                    th.DateTimeType(nullable=True),
-                    description="Row-level date used for incremental sync",
-                )
-            )
-        
         self._schema = th.PropertiesList(*props).to_dict()
 
         overrides = self.file_cfg.get("schema_overrides", {})
@@ -409,20 +410,10 @@ class SpreadsheetStream(Stream):
             if col in self._schema["properties"]:
                 # Fix: replace Python None with the JSON Schema string "null"
                 if "type" in props:
-                    props["type"] = [
-                        "null" if t is None else t
-                        for t in props["type"]
-                    ]
+                    props["type"] = ["null" if t is None else t for t in props["type"]]
                 self._schema["properties"][col].update(props)
 
         return self._schema
-
-    def post_process(self, row: dict, context: Context | None = None) -> dict | None:
-        """Post-Process, i.e. base64 decode the XML."""
-        return {
-            **row,
-            str(self.replication_key): datetime.now(timezone.utc),
-        }
 
     def get_records(self, context: Context | None) -> t.Iterable[dict]:
         if not self._headers:

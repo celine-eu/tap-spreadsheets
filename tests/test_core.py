@@ -4,7 +4,7 @@ import pathlib
 from singer_sdk.testing import get_tap_test_class
 
 from tap_spreadsheets.tap import TapSpreadsheets
-from tap_spreadsheets.stream import INCREMENTAL_KEY
+from tap_spreadsheets.stream import SDC_INCREMENTAL_KEY, SDC_FILENAME
 
 DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
 
@@ -58,6 +58,16 @@ CSV_CONFIG = {
     ]
 }
 
+COMMON_COLUMNS_CSV = {
+    "date",
+    "value",
+    "random",
+    "total",
+    SDC_INCREMENTAL_KEY,
+    SDC_FILENAME,
+}
+COMMON_COLUMNS_XLSX = {*COMMON_COLUMNS_CSV, "comments_and_notes"}
+
 
 # --- SDK built-in tests ---
 TestTapSpreadsheetExcel = get_tap_test_class(
@@ -80,6 +90,7 @@ def test_excel_schema_headers():
     for expected in ["date", "value", "random", "total"]:
         assert expected in schema_props
 
+
 def test_excel_schema_headers_skip_cells():
     tap = TapSpreadsheets(config=EXCEL_CONFIG_SKIP_CELLS)
     streams = tap.discover_streams()
@@ -87,6 +98,7 @@ def test_excel_schema_headers_skip_cells():
     schema_props = streams[0].schema["properties"]
     for expected in ["date", "value", "random", "total"]:
         assert expected in schema_props
+
 
 def test_excel_regex_worksheet_match():
     """Ensure regex worksheet pattern matches multiple years like report_2023, report_2024."""
@@ -97,7 +109,8 @@ def test_excel_regex_worksheet_match():
     # Should yield at least one record if any matching sheet exists
     assert len(records) > 0
     # All expected headers should exist
-    assert set(records[0].keys()) == {"date", "value", "random", "total", INCREMENTAL_KEY}
+    assert set(records[0].keys()) == COMMON_COLUMNS_CSV
+
 
 def test_csv_schema_headers():
     tap = TapSpreadsheets(config=CSV_CONFIG)
@@ -114,7 +127,7 @@ def test_excel_records_not_empty():
     records = list(streams[0].get_records(context=None))
     assert len(records) > 0
     # Keys match expected headers
-    assert set(records[0].keys()) == {"date", "value", "random", "total", "comments_and_notes", INCREMENTAL_KEY}
+    assert set(records[0].keys()) == COMMON_COLUMNS_XLSX
 
 
 def test_csv_records_not_empty():
@@ -122,4 +135,4 @@ def test_csv_records_not_empty():
     streams = tap.discover_streams()
     records = list(streams[0].get_records(context=None))
     assert len(records) > 0
-    assert set(records[0].keys()) == {"date", "value", "random", "total", INCREMENTAL_KEY}
+    assert set(records[0].keys()) == COMMON_COLUMNS_CSV
