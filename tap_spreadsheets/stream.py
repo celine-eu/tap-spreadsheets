@@ -14,6 +14,8 @@ from datetime import datetime, date, time, timedelta, timezone
 from concurrent.futures import ProcessPoolExecutor
 from tap_spreadsheets.storage import Storage
 import os
+from urllib.parse import urlparse
+
 
 if t.TYPE_CHECKING:
     from singer_sdk.helpers.types import Context
@@ -22,42 +24,55 @@ SDC_INCREMENTAL_KEY = "_sdc_last_modified"
 SDC_FILENAME = "_sdc_filename"
 
 
+def normalize_path(path: str) -> str:
+    """Convert file:/// URIs or relative paths to absolute FS paths."""
+    if path.startswith("file://"):
+        return urlparse(path).path  # gives /data/...
+    return os.path.abspath(path)
+
+
+def to_iso8601(dt: datetime) -> str:
+    return dt.astimezone(timezone.utc).replace(microsecond=0).isoformat()
+
+
+def parse_bookmark(val: str | None) -> datetime | None:
+    if not val:
+        return None
+    clean = val.replace("Z", "+00:00")
+    return datetime.fromisoformat(clean).astimezone(timezone.utc)
+
+
 def _process_file_with_state(
-    args: tuple["SpreadsheetStream", str, list[str], dict[t.Any, t.Any]],
+    args: tuple["SpreadsheetStream", str, list[str], dict[str, t.Any]],
 ):
-    stream, file, headers, expected_types = args
+    stream, filepath, headers, expected_types = args
 
-    filename = os.path.basename(file)
-    partition_name = stream.get_partition_name(filename)
+    partition_name = stream.get_partition_name(filepath)
     partition_context = {SDC_FILENAME: partition_name}
+
+    # load bookmark
     last_bookmark = stream.get_starting_replication_key_value(partition_context)
+    bookmark_dt = parse_bookmark(last_bookmark)
 
-    bookmark_dt: datetime | None = None
-    if last_bookmark:
-        bookmark_dt = datetime.fromisoformat(last_bookmark)
-        if bookmark_dt.tzinfo is None:
-            bookmark_dt = bookmark_dt.replace(tzinfo=timezone.utc)
-        else:
-            bookmark_dt = bookmark_dt.astimezone(timezone.utc)
+    # current mtime
+    mtime = datetime.fromtimestamp(os.path.getmtime(filepath), tz=timezone.utc).replace(
+        microsecond=0
+    )
 
-    mtime = datetime.fromtimestamp(os.path.getmtime(file), tz=timezone.utc)
-
-    # skip file entirely if mtime <= bookmark
+    # skip if already processed
     if bookmark_dt and mtime <= bookmark_dt:
         stream.logger.info(
-            "Skipping %s (mtime=%s <= bookmark=%s)", file, mtime, bookmark_dt
-        )
-        stream._increment_stream_state(
-            {SDC_INCREMENTAL_KEY: mtime.isoformat()},
-            context=partition_context,
+            "Skipping %s (mtime=%s <= bookmark=%s)", partition_name, mtime, bookmark_dt
         )
         return []
 
+    # parse file rows
     rows = (
-        stream._iter_excel(file) if stream.format == "excel" else stream._iter_csv(file)
+        stream._iter_excel(filepath)
+        if stream.format == "excel"
+        else stream._iter_csv(filepath)
     )
     records = []
-
     for row in rows:
         record = {
             h: stream._coerce_value(
@@ -79,18 +94,15 @@ def _process_file_with_state(
         ):
             continue
 
-        # attach file mtime and name
-        record[SDC_INCREMENTAL_KEY] = mtime
+        record[SDC_INCREMENTAL_KEY] = to_iso8601(mtime)
         record[SDC_FILENAME] = partition_name
-
         records.append(record)
 
-    stream.logger.info("Syncing %s (%d records)", file, len(records))
-
-    # advance bookmark with the latest seen (row_date or file mtime)
     if records:
+        stream.logger.info("Processed %d rows from %s", len(records), partition_name)
+        # update partition bookmark
         stream._increment_stream_state(
-            {SDC_INCREMENTAL_KEY: mtime.isoformat()},
+            {SDC_INCREMENTAL_KEY: to_iso8601(mtime)},
             context=partition_context,
         )
 
@@ -133,12 +145,13 @@ class SpreadsheetStream(Stream):
     @property
     def is_sorted(self) -> bool:
         """The stream returns records in order."""
-        return True
+        return False
 
-    def get_partition_name(self, filename: str):
-        return filename + (
-            f":{self.worksheet_ref}" if self.worksheet_ref is not None else ""
-        )
+    def get_partition_name(self, filepath: str) -> str:
+        abs_path = normalize_path(filepath)
+        if self.worksheet_ref is not None:
+            return f"{abs_path}:{self.worksheet_ref}"
+        return abs_path
 
     def _stem_header(self, h: t.Any, idx: int) -> str:
         """Normalize header names to safe identifiers."""
