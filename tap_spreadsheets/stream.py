@@ -11,7 +11,6 @@ from singer_sdk.streams import Stream
 from singer_sdk import typing as th
 from decimal import Decimal
 from datetime import datetime, date, time, timedelta, timezone
-from concurrent.futures import ProcessPoolExecutor
 from tap_spreadsheets.storage import Storage
 import os
 from urllib.parse import urlparse
@@ -44,87 +43,6 @@ def parse_bookmark(val: str | None) -> datetime | None:
     return datetime.fromisoformat(clean).astimezone(timezone.utc)
 
 
-def _process_file_with_state(
-    args: tuple["SpreadsheetStream", str, list[str], dict[str, t.Any]],
-):
-    stream, filepath, headers, expected_types = args
-
-    partition_name = stream.get_partition_name(filepath)
-
-    partition_context = {
-        SDC_FILENAME: partition_name,
-        SDC_STREAM: stream.table_name,
-    }
-
-    if stream.format == "excel":
-        partition_context[SDC_WORKSHEET] = str(stream.worksheet_ref)
-    else:
-        # for CSV, set worksheet empty/null
-        partition_context[SDC_WORKSHEET] = None
-
-    # load bookmark
-    last_bookmark = stream.get_starting_replication_key_value(partition_context)
-    bookmark_dt = parse_bookmark(last_bookmark)
-
-    # current mtime
-    mtime = datetime.fromtimestamp(os.path.getmtime(filepath), tz=timezone.utc).replace(
-        microsecond=0
-    )
-
-    # skip if already processed
-    if bookmark_dt and mtime <= bookmark_dt:
-        stream.logger.info(
-            "Skipping %s (mtime=%s <= bookmark=%s)", partition_name, mtime, bookmark_dt
-        )
-        return []
-
-    # parse file rows
-    rows = (
-        stream._iter_excel(filepath)
-        if stream.format == "excel"
-        else stream._iter_csv(filepath)
-    )
-    records = []
-    for row in rows:
-        record = {
-            h: stream._coerce_value(
-                (
-                    row[i + stream.skip_columns]
-                    if i + stream.skip_columns < len(row)
-                    else None
-                ),
-                (
-                    "integer"
-                    if "integer" in expected_types.get(h, [])
-                    else "number" if "number" in expected_types.get(h, []) else "string"
-                ),
-            )
-            for i, h in enumerate(headers)
-        }
-        if stream.drop_empty and any(
-            record.get(pk) in (None, "") for pk in stream.primary_keys
-        ):
-            continue
-
-        record[SDC_INCREMENTAL_KEY] = to_iso8601(mtime)
-        record[SDC_FILENAME] = partition_name
-        record[SDC_STREAM] = stream.table_name
-        record[SDC_WORKSHEET] = (
-            str(stream.worksheet_ref) if stream.format == "excel" else None
-        )
-        records.append(record)
-
-    if records:
-        stream.logger.info("Processed %d rows from %s", len(records), partition_name)
-        # update partition bookmark
-        stream._increment_stream_state(
-            {SDC_INCREMENTAL_KEY: to_iso8601(mtime)},
-            context=partition_context,
-        )
-
-    return records
-
-
 class SpreadsheetStream(Stream):
     """Stream class for spreadsheet (CSV/Excel) files."""
 
@@ -133,7 +51,7 @@ class SpreadsheetStream(Stream):
         self.tap = tap
 
         self.file_cfg = file_cfg
-        self.path_glob: str = file_cfg["path"]
+
         self.format: str = file_cfg["format"].lower()
         self.worksheet_ref: str | int | None = file_cfg.get("worksheet")
         self.table_name = file_cfg.get("table_name")
@@ -158,7 +76,7 @@ class SpreadsheetStream(Stream):
 
         self._schema = None
         self._headers: list[str] = []
-        self.storage = Storage(self.path_glob)
+        self.storage = Storage(self.file_cfg["path"])
 
     @property
     def is_sorted(self) -> bool:
@@ -376,56 +294,61 @@ class SpreadsheetStream(Stream):
             for row in reader:
                 yield row
 
-    def _get_files(self) -> list[str]:
+    def get_files(self):
         files = self.storage.glob()
-        if not files:
-            raise FileNotFoundError(
-                f"No {self.format} files found for {self.path_glob}"
+        if not files or len(files) == 0:
+            self.logger.warning(
+                "No %s files found for %s", self.format, self.file_cfg["path"]
             )
-        return files
+        return files or []
 
     @property
     def schema(self) -> dict:
         if self._schema:
             return self._schema
 
-        sample_file = self._get_files()[0]
-        rows = (
-            self._iter_excel(sample_file)
-            if self.format == "excel"
-            else self._iter_csv(sample_file)
-        )
+        props = []
 
-        if self.column_headers:
-            headers = [
-                self._stem_header(h, i) for i, h in enumerate(self.column_headers)
-            ]
-        else:
-            if self.format == "excel":
-                headers = self._extract_headers_excel(sample_file)
+        files = self.get_files()
+        if len(files):
+            sample_file = files[0]
+            rows = (
+                self._iter_excel(sample_file)
+                if self.format == "excel"
+                else self._iter_csv(sample_file)
+            )
+
+            if self.column_headers:
+                headers = [
+                    self._stem_header(h, i) for i, h in enumerate(self.column_headers)
+                ]
             else:
-                headers = self._extract_headers_csv(sample_file)
+                if self.format == "excel":
+                    headers = self._extract_headers_excel(sample_file)
+                else:
+                    headers = self._extract_headers_csv(sample_file)
 
-        self._headers = headers
+            self._headers = headers
 
-        samples = []
-        for i, row in enumerate(rows):
-            if i >= self.sample_rows:
-                break
-            samples.append(row)
+            samples = []
+            for i, row in enumerate(rows):
+                if i >= self.sample_rows:
+                    break
+                samples.append(row)
 
-        types: dict[str, th.JSONTypeHelper] = {}
-        for i, h in enumerate(headers):
-            col_idx = i + self.skip_columns
-            col_values = [
-                r[col_idx]
-                for r in samples
-                if col_idx < len(r) and r[col_idx] not in (None, "")
-            ]
-            types[h] = self._infer_type(col_values)
+            types: dict[str, th.JSONTypeHelper] = {}
+            for i, h in enumerate(headers):
+                col_idx = i + self.skip_columns
+                col_values = [
+                    r[col_idx]
+                    for r in samples
+                    if col_idx < len(r) and r[col_idx] not in (None, "")
+                ]
+                types[h] = self._infer_type(col_values)
 
-        # build schema with replication key
-        props = [th.Property(name.lower(), tpe) for name, tpe in types.items()]
+            # build schema with replication key
+            props = [th.Property(name.lower(), tpe) for name, tpe in types.items()]
+
         props.append(
             th.Property(
                 SDC_INCREMENTAL_KEY,
@@ -466,28 +389,115 @@ class SpreadsheetStream(Stream):
 
         return self._schema
 
+    def get_partition_context(self, filepath: str) -> dict[str, t.Any]:
+        """Return the one true partition context for this file."""
+        return {
+            SDC_FILENAME: self.get_partition_name(filepath),
+            SDC_STREAM: self.table_name,
+            SDC_WORKSHEET: str(self.worksheet_ref) if self.format == "excel" else None,
+        }
+
+    def process_file(
+        self,
+        filepath: str,
+        headers: list[str],
+        expected_types: dict[str, t.Any],
+        context: Context,
+    ) -> list[dict]:
+        """Process one file with state awareness and return its records."""
+
+        # load bookmark
+        last_bookmark = self.get_starting_replication_key_value(context)
+        bookmark_dt = parse_bookmark(last_bookmark)
+
+        # current mtime
+        mtime = datetime.fromtimestamp(
+            os.path.getmtime(filepath), tz=timezone.utc
+        ).replace(microsecond=0)
+
+        self.logger.debug(
+            "Partition context: %s, last_bookmark=%s, mtime=%s",
+            context,
+            bookmark_dt,
+            mtime,
+        )
+
+        # skip if already processed
+        if bookmark_dt and mtime <= bookmark_dt:
+            self.logger.info(
+                "Skipping %s (mtime=%s <= bookmark=%s)", filepath, mtime, bookmark_dt
+            )
+            return []
+
+        # parse file rows
+        rows = (
+            self._iter_excel(filepath)
+            if self.format == "excel"
+            else self._iter_csv(filepath)
+        )
+        records: list[dict] = []
+
+        for row in rows:
+            record = {
+                h: self._coerce_value(
+                    (
+                        row[i + self.skip_columns]
+                        if i + self.skip_columns < len(row)
+                        else None
+                    ),
+                    (
+                        "integer"
+                        if "integer" in expected_types.get(h, [])
+                        else (
+                            "number"
+                            if "number" in expected_types.get(h, [])
+                            else "string"
+                        )
+                    ),
+                )
+                for i, h in enumerate(headers)
+            }
+            if self.drop_empty and any(
+                record.get(pk) in (None, "") for pk in self.primary_keys
+            ):
+                continue
+
+            record[SDC_INCREMENTAL_KEY] = to_iso8601(mtime)
+            record[SDC_FILENAME] = filepath
+            record[SDC_STREAM] = self.table_name
+            record[SDC_WORKSHEET] = (
+                str(self.worksheet_ref) if self.format == "excel" else None
+            )
+            records.append(record)
+
+        if records:
+            self.logger.info("Processed %d rows from %s", len(records), filepath)
+            self._increment_stream_state(
+                {SDC_INCREMENTAL_KEY: to_iso8601(mtime)},
+                context=context,
+            )
+
+        return records
+
     def get_records(self, context: Context | None) -> t.Iterable[dict]:
+        """Yield records for all files matching this stream's glob."""
         if not self._headers:
             _ = self.schema
         headers = self._headers
-
-        files = sorted(self._get_files())
-        parallelize = max(1, self.file_cfg.get("parallelize", 1))
 
         expected_types = {
             name: schema_def.get("type", ["string"])
             for name, schema_def in self.schema["properties"].items()
         }
 
-        if parallelize == 1:
-            for f in files:
-                recs = _process_file_with_state((self, f, headers, expected_types))
-                yield from recs
-        else:
-            with ProcessPoolExecutor(max_workers=parallelize) as ex:
-                for recs in ex.map(
-                    _process_file_with_state,
-                    [(self, f, headers, expected_types) for f in files],
-                ):
-                    # recs is ready as soon as the worker finishes one file
-                    yield from recs
+        files = self.get_files()
+        if not files:
+            self.logger.warning(
+                "No %s files found for %s", self.format, self.file_cfg["path"]
+            )
+            yield from []
+
+        for filepath in sorted(files):
+            yield from self.process_file(
+                filepath, headers, expected_types, context or {}
+            )

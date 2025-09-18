@@ -89,7 +89,6 @@ plugins:
         # primary_keys: [id]
         # delimiter: ";"
         # quotechar: "'"
-        # parallelize: 4
 
   loaders:
     - name: target-jsonl

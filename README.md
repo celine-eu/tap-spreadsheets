@@ -63,7 +63,6 @@ A full list of supported settings and capabilities is available by running: `tap
 - `column_headers` (array): Explicit column headers.
 - `delimiter` (string): CSV delimiter, default ','. Inferred if not provided.
 - `quotechar` (string): CSV quote char, default '"'. Inferred if not provided.
-- `parallelize` (integer) Number of worker processes to use per stream. If >1, files are processed in parallel but results are ordered by filename.
 - `schema_overrides` (dict): Overrrides JSON schema definition per field. Eg. `schema_overrides: { my_column_name: { type: [string, "null"] } }`
 
 ### Example
@@ -77,7 +76,6 @@ A full list of supported settings and capabilities is available by running: `tap
             primary_keys: [date]
             drop_empty: true
             worksheet: Sheet1
-            parallelize: 4
 
           - path: data/*.xlsx
             format: excel
