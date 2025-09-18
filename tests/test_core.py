@@ -1,10 +1,14 @@
 """Tests for tap-spreadsheets."""
 
 import pathlib
-from singer_sdk.testing import get_tap_test_class
-
 from tap_spreadsheets.tap import TapSpreadsheets
-from tap_spreadsheets.stream import SDC_INCREMENTAL_KEY, SDC_FILENAME
+from tap_spreadsheets.stream import (
+    SDC_INCREMENTAL_KEY,
+    SDC_FILENAME,
+    SDC_STREAM,
+    SDC_WORKSHEET,
+)
+from singer_sdk.testing import get_tap_test_class
 
 DATA_DIR = pathlib.Path(__file__).parent.parent / "data"
 
@@ -58,6 +62,7 @@ CSV_CONFIG = {
     ]
 }
 
+# --- Expected column sets ---
 COMMON_COLUMNS_CSV = {
     "date",
     "value",
@@ -65,17 +70,19 @@ COMMON_COLUMNS_CSV = {
     "total",
     SDC_INCREMENTAL_KEY,
     SDC_FILENAME,
+    SDC_STREAM,
+    SDC_WORKSHEET,
 }
 COMMON_COLUMNS_XLSX = {*COMMON_COLUMNS_CSV, "comments_and_notes"}
 
 
-# --- SDK built-in tests ---
-TestTapSpreadsheetExcel = get_tap_test_class(
+# --- SDK standard tests (with incremental handling) ---
+TestTapSpreadsheetsExcel = get_tap_test_class(
     tap_class=TapSpreadsheets,
     config=EXCEL_CONFIG,
 )
 
-TestTapSpreadsheetCsv = get_tap_test_class(
+TestTapSpreadsheetsCsv = get_tap_test_class(
     tap_class=TapSpreadsheets,
     config=CSV_CONFIG,
 )
@@ -136,3 +143,23 @@ def test_csv_records_not_empty():
     records = list(streams[0].get_records(context=None))
     assert len(records) > 0
     assert set(records[0].keys()) == COMMON_COLUMNS_CSV
+
+
+def test_csv_records_have_stream_and_worksheet():
+    tap = TapSpreadsheets(config=CSV_CONFIG)
+    stream = tap.discover_streams()[0]
+    records = list(stream.get_records(context=None))
+    rec = records[0]
+    # CSV should have stream set, worksheet empty
+    assert rec[SDC_STREAM] == stream.table_name
+    assert rec[SDC_WORKSHEET] is None
+
+
+def test_excel_records_have_stream_and_worksheet():
+    tap = TapSpreadsheets(config=EXCEL_CONFIG)
+    stream = tap.discover_streams()[0]
+    records = list(stream.get_records(context=None))
+    rec = records[0]
+    # Excel should have stream and a worksheet reference
+    assert rec[SDC_STREAM] == stream.table_name
+    assert rec[SDC_WORKSHEET] == "Sheet1" or str(stream.worksheet_ref)

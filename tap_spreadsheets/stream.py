@@ -22,6 +22,8 @@ if t.TYPE_CHECKING:
 
 SDC_INCREMENTAL_KEY = "_sdc_last_modified"
 SDC_FILENAME = "_sdc_filename"
+SDC_WORKSHEET = "_sdc_worksheet"
+SDC_STREAM = "_sdc_stream"
 
 
 def normalize_path(path: str) -> str:
@@ -48,7 +50,17 @@ def _process_file_with_state(
     stream, filepath, headers, expected_types = args
 
     partition_name = stream.get_partition_name(filepath)
-    partition_context = {SDC_FILENAME: partition_name}
+
+    partition_context = {
+        SDC_FILENAME: partition_name,
+        SDC_STREAM: stream.table_name,
+    }
+
+    if stream.format == "excel":
+        partition_context[SDC_WORKSHEET] = str(stream.worksheet_ref)
+    else:
+        # for CSV, set worksheet empty/null
+        partition_context[SDC_WORKSHEET] = None
 
     # load bookmark
     last_bookmark = stream.get_starting_replication_key_value(partition_context)
@@ -96,6 +108,10 @@ def _process_file_with_state(
 
         record[SDC_INCREMENTAL_KEY] = to_iso8601(mtime)
         record[SDC_FILENAME] = partition_name
+        record[SDC_STREAM] = stream.table_name
+        record[SDC_WORKSHEET] = (
+            str(stream.worksheet_ref) if stream.format == "excel" else None
+        )
         records.append(record)
 
     if records:
@@ -114,6 +130,8 @@ class SpreadsheetStream(Stream):
 
     def __init__(self, tap, file_cfg: dict) -> None:
 
+        self.tap = tap
+
         self.file_cfg = file_cfg
         self.path_glob: str = file_cfg["path"]
         self.format: str = file_cfg["format"].lower()
@@ -127,7 +145,7 @@ class SpreadsheetStream(Stream):
 
         super().__init__(tap, name=self.table_name)
 
-        self.state_partitioning_keys = [SDC_FILENAME]
+        self.state_partitioning_keys = [SDC_FILENAME, SDC_STREAM, SDC_WORKSHEET]
         self.replication_key = SDC_INCREMENTAL_KEY
         self.forced_replication_method = "INCREMENTAL"
 
@@ -149,8 +167,6 @@ class SpreadsheetStream(Stream):
 
     def get_partition_name(self, filepath: str) -> str:
         abs_path = normalize_path(filepath)
-        if self.worksheet_ref is not None:
-            return f"{abs_path}:{self.worksheet_ref}"
         return abs_path
 
     def _stem_header(self, h: t.Any, idx: int) -> str:
@@ -424,7 +440,20 @@ class SpreadsheetStream(Stream):
                 description="Filename reference",
             ),
         )
-
+        props.append(
+            th.Property(
+                SDC_STREAM,
+                th.StringType(nullable=True),
+                description="Stream (table_name) reference",
+            )
+        )
+        props.append(
+            th.Property(
+                SDC_WORKSHEET,
+                th.StringType(nullable=True),
+                description="Worksheet reference (null for CSV)",
+            )
+        )
         self._schema = th.PropertiesList(*props).to_dict()
 
         overrides = self.file_cfg.get("schema_overrides", {})
