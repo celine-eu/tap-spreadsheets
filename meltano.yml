@@ -83,6 +83,12 @@ plugins:
             primary_keys: [date, total]
             drop_empty: true
 
+          - path: data/01*.csv
+            format: csv
+            table_name: 01_normalized
+            primary_keys: [date_start]
+            drop_empty: true
+
         # - path: s3://my-bucket/reports/*.csv
         # format: csv
         # table_name: csv_reports

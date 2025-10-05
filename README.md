@@ -61,9 +61,10 @@ A full list of supported settings and capabilities is available by running: `tap
 - `skip_rows` (integer): Rows to skip before headers.
 - `sample_rows` (integer): Rows to sample for schema inference.
 - `column_headers` (array): Explicit column headers.
-- `delimiter` (string): CSV delimiter, default ','. Inferred if not provided.
-- `quotechar` (string): CSV quote char, default '"'. Inferred if not provided.
+- `delimiter` (string): CSV delimiter. Inferred if not provided or default to ",".
+- `quotechar` (string): CSV quote char. Inferred if not provided or default '"'.
 - `schema_overrides` (dict): Overrrides JSON schema definition per field. Eg. `schema_overrides: { my_column_name: { type: [string, "null"] } }`
+
 
 ### Example
 

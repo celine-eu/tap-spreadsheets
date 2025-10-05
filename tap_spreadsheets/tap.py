@@ -85,11 +85,14 @@ class TapSpreadsheets(Tap):
                         description="Explicit headers (optional).",
                     ),
                     th.Property(
-                        "parallelize",
-                        th.IntegerType,
-                        default=1,
-                        description="Number of worker processes to use per stream. "
-                        "If >1, files are processed in parallel but results are ordered by filename.",
+                        "delimiter",
+                        th.StringType,
+                        description='CSV delimiter, inferred or default to "," ',
+                    ),
+                    th.Property(
+                        "quotechar",
+                        th.StringType,
+                        description="CSV quote char, inferred or default to '\"' ",
                     ),
                     th.Property(
                         "schema_overrides",

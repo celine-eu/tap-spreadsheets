@@ -241,10 +241,32 @@ class SpreadsheetStream(Stream):
                 for row in ws.iter_rows(min_row=start_row, values_only=True):
                     yield row
 
+    def _detect_csv_dialect(self, file: str) -> tuple[str, str]:
+        """Detect delimiter and quotechar for a CSV file, with config override and fallback."""
+        delimiter: str = self.file_cfg.get("delimiter", "")
+        quotechar: str = self.file_cfg.get("quote_char", "")
+
+        with self.storage.open(file, "rt") as fh:
+            sample = fh.read(4096)
+
+        if not delimiter or not quotechar:
+            try:
+                sniffer = csv.Sniffer()
+                dialect = sniffer.sniff(sample)
+                delimiter = delimiter or str(dialect.delimiter)
+                quotechar = quotechar or str(dialect.quotechar)
+            except csv.Error:
+                delimiter = delimiter or ","
+                quotechar = quotechar or '"'
+
+        return delimiter, quotechar
+
     def _extract_headers_csv(self, file: str) -> list[str]:
         """Extract and normalize headers from a CSV file."""
+        delimiter, quotechar = self._detect_csv_dialect(file)
+
         with self.storage.open(file, "rt") as fh:
-            reader = csv.reader(fh)
+            reader = csv.reader(fh, delimiter=delimiter, quotechar=quotechar)
 
             # Skip configured rows before header
             for _ in range(self.skip_rows):
@@ -257,7 +279,6 @@ class SpreadsheetStream(Stream):
 
         headers: list[str] = []
         for i, h in enumerate(raw_headers):
-            # Fallback if header is empty or looks numeric
             if h is None or str(h).strip() == "":
                 headers.append(f"col_{i}")
             elif str(h).strip().isnumeric():
@@ -268,23 +289,10 @@ class SpreadsheetStream(Stream):
         return headers[self.skip_columns :]
 
     def _iter_csv(self, file: str):
+        """Iterate data rows (excluding header) from a CSV file."""
+        delimiter, quotechar = self._detect_csv_dialect(file)
+
         with self.storage.open(file, "rt") as fh:
-            sample = fh.read(4096)
-            fh.seek(0)
-
-            delimiter = self.file_cfg.get("delimiter")
-            quotechar = self.file_cfg.get("quotechar")
-
-            if not delimiter or not quotechar:
-                try:
-                    sniffer = csv.Sniffer()
-                    dialect = sniffer.sniff(sample)
-                    delimiter = delimiter or dialect.delimiter
-                    quotechar = quotechar or dialect.quotechar
-                except csv.Error:
-                    delimiter = delimiter or ","
-                    quotechar = quotechar or '"'
-
             reader = csv.reader(fh, delimiter=delimiter, quotechar=quotechar)
 
             # skip configured number of rows + the header
