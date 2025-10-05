@@ -42,59 +42,52 @@ plugins:
 
       config:
         files:
-          - path: data/*.xlsx
-            format: excel
-            table_name: test
-            primary_keys: [date, total]
-            drop_empty: true
-            worksheet: Sheet1
-            schema_overrides:
-              total:
-                type: [string, "null"]
+          # - path: data/*.xlsx
+          #   format: excel
+          #   table_name: test
+          #   primary_keys: [date, total]
+          #   drop_empty: true
+          #   worksheet: Sheet1
+          #   schema_overrides:
+          #     total:
+          #       type: [string, "null"]
 
-          - path: data/*.xlsx
-            format: excel
-            table_name: test_skip
-            primary_keys: [date, total]
-            drop_empty: true
-            worksheet: Sheet2
-            skip_columns: 1
-            skip_rows: 4
+          # - path: data/*.xlsx
+          #   format: excel
+          #   table_name: test_skip
+          #   primary_keys: [date, total]
+          #   drop_empty: true
+          #   worksheet: Sheet2
+          #   skip_columns: 1
+          #   skip_rows: 4
 
-          - path: data/*.xlsx
-            format: excel
-            table_name: test_regex
-            primary_keys: [date, total]
-            drop_empty: true
-            worksheet: "report_[0-9]+"
+          # - path: data/*.xlsx
+          #   format: excel
+          #   table_name: test_regex
+          #   primary_keys: [date, total]
+          #   drop_empty: true
+          #   worksheet: "report_[0-9]+"
 
-          - path: data/*.xlsx
-            format: excel
-            worksheet: Sheet2
-            table_name: excel_table
-            primary_keys: [date, total]
-            drop_empty: true
-            skip_columns: 1
-            skip_rows: 4
+          # - path: data/*.xlsx
+          #   format: excel
+          #   worksheet: Sheet2
+          #   table_name: excel_table
+          #   primary_keys: [date, total]
+          #   drop_empty: true
+          #   skip_columns: 1
+          #   skip_rows: 4
 
-          - path: data/test.csv
-            format: csv
-            table_name: csv
-            primary_keys: [date, total]
-            drop_empty: true
+          # - path: data/test.csv
+          #   format: csv
+          #   table_name: csv
+          #   primary_keys: [date, total]
+          #   drop_empty: true
 
-          - path: data/01*.csv
+          - path: s3://local-data/01*.csv
             format: csv
             table_name: 01_normalized
             primary_keys: [date_start]
             drop_empty: true
-
-        # - path: s3://my-bucket/reports/*.csv
-        # format: csv
-        # table_name: csv_reports
-        # primary_keys: [id]
-        # delimiter: ";"
-        # quotechar: "'"
 
   loaders:
     - name: target-jsonl

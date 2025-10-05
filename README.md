@@ -95,6 +95,15 @@ A full list of supported settings and capabilities is available by running: `tap
             quotechar: "'"
 ```
 
+To use S3 based storage ensure to provide those envirnoment variables: 
+
+- `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` access key/secret pair
+- `AWS_S3_ENDPOINT_URL` Custom S3 endpoint such as minio or compatible interface
+
+Example:
+
+`AWS_ACCESS_KEY_ID=minioadmin AWS_SECRET_ACCESS_KEY=minioadmin AWS_S3_ENDPOINT_URL=http://localhost:19000 meltano run tap-spreadsheets target-jsonl`
+
 
 A full list of supported settings and capabilities for this
 tap is available by running:

@@ -84,8 +84,7 @@ class SpreadsheetStream(Stream):
         return False
 
     def get_partition_name(self, filepath: str) -> str:
-        abs_path = normalize_path(filepath)
-        return abs_path
+        return self.storage.normalize_path(filepath)
 
     def _stem_header(self, h: t.Any, idx: int) -> str:
         """Normalize header names to safe identifiers."""
@@ -418,10 +417,8 @@ class SpreadsheetStream(Stream):
         last_bookmark = self.get_starting_replication_key_value(context)
         bookmark_dt = parse_bookmark(last_bookmark)
 
-        # current mtime
-        mtime = datetime.fromtimestamp(
-            os.path.getmtime(filepath), tz=timezone.utc
-        ).replace(microsecond=0)
+        info = self.storage.describe(filepath)
+        mtime = info["mtime"]
 
         self.logger.debug(
             "Partition context: %s, last_bookmark=%s, mtime=%s",
