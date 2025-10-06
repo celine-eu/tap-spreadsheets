@@ -16,11 +16,9 @@ class Storage:
         # Ensure fsspec knows how to reach MinIO/S3
         if path_glob.startswith("s3://"):
             storage_options = {
-                "key": os.getenv("AWS_ACCESS_KEY_ID", None),
-                "secret": os.getenv("AWS_SECRET_ACCESS_KEY", None),
-                "client_kwargs": {
-                    "endpoint_url": os.getenv("AWS_S3_ENDPOINT_URL", None)
-                },
+                "key": os.getenv("S3_ACCESS_KEY_ID", None),
+                "secret": os.getenv("S3_SECRET_ACCESS_KEY", None),
+                "client_kwargs": {"endpoint_url": os.getenv("S3_ENDPOINT_URL", None)},
             }
         else:
             storage_options = {}
