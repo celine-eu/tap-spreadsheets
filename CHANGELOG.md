@@ -1,6 +1,124 @@
 # CHANGELOG
 
 
+## v1.1.1 (2025-11-03)
+
+### Bug Fixes
+
+- Review ty errors, add dev deps
+  ([`2b2d404`](https://github.com/celine-eu/tap-spreadsheets/commit/2b2d4046d47101b6c8e93e2f3edff7eb6d8936dc))
+
+### Chores
+
+- Fix typings
+  ([`0022e6e`](https://github.com/celine-eu/tap-spreadsheets/commit/0022e6ec0d87daa17a5928b87bd92c1a40eedd8e))
+
+- Fix typings
+  ([`aba3f96`](https://github.com/celine-eu/tap-spreadsheets/commit/aba3f96dddaeb8f0fc3e2d6b48855ba022307b70))
+
+- **deps**: Bump meltano from 3.9.1 to 4.0.1
+  ([`1a703bb`](https://github.com/celine-eu/tap-spreadsheets/commit/1a703bb0c6abb370a4c678fae2be4eaf7653b06b))
+
+Bumps [meltano](https://github.com/meltano/meltano) from 3.9.1 to 4.0.1. - [Release
+  notes](https://github.com/meltano/meltano/releases) -
+  [Changelog](https://github.com/meltano/meltano/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/meltano/meltano/compare/v3.9.1...v4.0.1)
+
+--- updated-dependencies: - dependency-name: meltano dependency-version: 4.0.1
+
+dependency-type: direct:production
+
+update-type: version-update:semver-major ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump ty from 0.0.1a21 to 0.0.1a24
+  ([`8e8bc6c`](https://github.com/celine-eu/tap-spreadsheets/commit/8e8bc6c9344a2d013a3cab120f5cc6d316f14ca3))
+
+Bumps [ty](https://github.com/astral-sh/ty) from 0.0.1a21 to 0.0.1a24. - [Release
+  notes](https://github.com/astral-sh/ty/releases) -
+  [Changelog](https://github.com/astral-sh/ty/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/astral-sh/ty/compare/0.0.1-alpha.21...0.0.1-alpha.24)
+
+--- updated-dependencies: - dependency-name: ty dependency-version: 0.0.1a24
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Bump types-requests from 2.32.4.20250809 to 2.32.4.20250913
+  ([`450a7d2`](https://github.com/celine-eu/tap-spreadsheets/commit/450a7d205dd41314684c9d38533ecf3d60b3d2c7))
+
+Bumps [types-requests](https://github.com/typeshed-internal/stub_uploader) from 2.32.4.20250809 to
+  2.32.4.20250913. - [Commits](https://github.com/typeshed-internal/stub_uploader/commits)
+
+--- updated-dependencies: - dependency-name: types-requests dependency-version: 2.32.4.20250913
+
+dependency-type: direct:production
+
+update-type: version-update:semver-patch ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+- **deps**: Update singer-sdk[faker] requirement
+  ([`e8d992d`](https://github.com/celine-eu/tap-spreadsheets/commit/e8d992d37079b94ee11a42fbe778ab1070dab7df))
+
+Updates the requirements on [singer-sdk[faker]](https://github.com/meltano/sdk) to permit the latest
+  version. - [Release notes](https://github.com/meltano/sdk/releases) -
+  [Changelog](https://github.com/meltano/sdk/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/meltano/sdk/compare/v0.49.1...v0.52.2)
+
+--- updated-dependencies: - dependency-name: singer-sdk[faker] dependency-version: 0.52.2
+
+dependency-type: direct:production ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+### Continuous Integration
+
+- Bump the actions group across 1 directory with 3 updates
+  ([`56f5a94`](https://github.com/celine-eu/tap-spreadsheets/commit/56f5a944c14dc9e7ddfc84c374a1e885e50fea3a))
+
+Bumps the actions group with 3 updates in the / directory:
+  [hynek/build-and-inspect-python-package](https://github.com/hynek/build-and-inspect-python-package),
+  [actions/download-artifact](https://github.com/actions/download-artifact) and
+  [astral-sh/setup-uv](https://github.com/astral-sh/setup-uv).
+
+Updates `hynek/build-and-inspect-python-package` from 2.13.0 to 2.14.0 - [Release
+  notes](https://github.com/hynek/build-and-inspect-python-package/releases) -
+  [Changelog](https://github.com/hynek/build-and-inspect-python-package/blob/main/CHANGELOG.md) -
+  [Commits](https://github.com/hynek/build-and-inspect-python-package/compare/c52c3a4710070b50470d903818a7b25115dcd076...efb823f52190ad02594531168b7a2d5790e66516)
+
+Updates `actions/download-artifact` from 5.0.0 to 6.0.0 - [Release
+  notes](https://github.com/actions/download-artifact/releases) -
+  [Commits](https://github.com/actions/download-artifact/compare/634f93cb2916e3fdff6788551b99b062d0335ce0...018cc2cf5baa6db3ef3c5f8a56943fffe632ef53)
+
+Updates `astral-sh/setup-uv` from 6.7.0 to 7.1.2 - [Release
+  notes](https://github.com/astral-sh/setup-uv/releases) -
+  [Commits](https://github.com/astral-sh/setup-uv/compare/b75a909f75acd358c2196fb9a5f1299a9a8868a4...85856786d1ce8acfbcc2f13a5f3fbd6b938f9f41)
+
+--- updated-dependencies: - dependency-name: hynek/build-and-inspect-python-package
+  dependency-version: 2.14.0
+
+dependency-type: direct:production
+
+update-type: version-update:semver-minor
+
+dependency-group: actions
+
+- dependency-name: actions/download-artifact dependency-version: 6.0.0
+
+update-type: version-update:semver-major
+
+- dependency-name: astral-sh/setup-uv dependency-version: 7.1.2
+
+dependency-group: actions ...
+
+Signed-off-by: dependabot[bot] <support@github.com>
+
+
 ## v1.1.0 (2025-11-03)
 
 ### Bug Fixes
