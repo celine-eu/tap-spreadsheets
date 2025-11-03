@@ -36,8 +36,14 @@ class Storage:
         self.fs, _ = url_to_fs(path_glob, **storage_options)
 
     def glob(self) -> list[str]:
-        """Return matching files for glob."""
-        return self.fs.glob(self.path_glob)
+        """Return matching files for glob (always including protocol prefix)."""
+        paths = self.fs.glob(self.path_glob)
+
+        if self.path_glob.startswith("s3://"):
+            # ensure full "s3://bucket/file"
+            return [f"s3://{p}" if not p.startswith("s3://") else p for p in paths]
+
+        return paths
 
     def open(self, path: str, mode: str = "rb") -> t.IO:
         """Open a file handle with fsspec."""
