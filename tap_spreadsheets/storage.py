@@ -51,7 +51,9 @@ class Storage:
             st = os.stat(path)
             info = {"name": path, "size": st.st_size, "mtime": st.st_mtime}
 
-        mtime_val: t.Any = info.get("mtime") or info.get("last_modified")
+        mtime_val: t.Any = (
+            info.get("mtime") or info.get("last_modified") or info.get("LastModified")
+        )
         if isinstance(mtime_val, (int, float)):
             mtime = datetime.fromtimestamp(mtime_val, tz=timezone.utc)
         elif hasattr(mtime_val, "timestamp"):
