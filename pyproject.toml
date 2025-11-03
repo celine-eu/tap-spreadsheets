@@ -116,7 +116,7 @@ dependency_groups = [ "test", "typing" ]
 commands = [ [ "pytest", { replace = "posargs", default = [ "tests" ], extend = true } ] ]
 
 [tool.tox.env.typing]
-dependency_groups = [ "test", "typing", "dev ]
+dependency_groups = [ "test", "typing", "dev" ]
 commands = [
     [ "mypy", { replace = "posargs", default = [ "tap_spreadsheets", "tests" ], extend = true } ],
     [ "ty", "check", { replace = "posargs", default = [ "tap_spreadsheets", "tests" ], extend = true } ],
