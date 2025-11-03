@@ -418,7 +418,7 @@ class SpreadsheetStream(Stream):
         bookmark_dt = parse_bookmark(last_bookmark)
 
         info = self.storage.describe(filepath)
-        mtime = info["mtime"]
+        mtime = info.mtime
 
         self.logger.debug(
             "Partition context: %s, last_bookmark=%s, mtime=%s",

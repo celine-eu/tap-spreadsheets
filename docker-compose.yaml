@@ -20,7 +20,8 @@ services:
   minio-mc:
     image: quay.io/minio/mc:latest
     depends_on:
-      - minio
+      minio:
+        condition: service_healthy
     entrypoint: >
       /bin/sh -c "
       set -e;

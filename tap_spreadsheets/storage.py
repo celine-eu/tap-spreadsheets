@@ -6,6 +6,16 @@ import typing as t
 from fsspec.core import url_to_fs
 from urllib.parse import urlparse
 from datetime import timezone, datetime
+from dataclasses import dataclass
+
+
+@dataclass
+class FileInfo:
+    """Normalized file metadata across local and remote storages."""
+
+    path: str
+    size: int | None
+    mtime: datetime
 
 
 class Storage:
@@ -33,23 +43,20 @@ class Storage:
         """Open a file handle with fsspec."""
         return self.fs.open(path, mode)
 
-    def describe(self, path: str) -> dict[str, t.Any]:
-        """Return normalized file metadata across local and remote storages."""
+    def describe(self, path: str) -> FileInfo:
+        """Return normalized file metadata."""
         try:
             info = self.fs.info(path)
         except Exception:
-            # fallback for local files
             st = os.stat(path)
             info = {"name": path, "size": st.st_size, "mtime": st.st_mtime}
 
-        # Normalize mtime field
         mtime_val: t.Any = info.get("mtime") or info.get("last_modified")
         if isinstance(mtime_val, (int, float)):
             mtime = datetime.fromtimestamp(mtime_val, tz=timezone.utc)
         elif hasattr(mtime_val, "timestamp"):
             mtime = datetime.fromtimestamp(mtime_val.timestamp(), tz=timezone.utc)
         elif isinstance(mtime_val, str):
-            # e.g., '2025-10-05T12:34:56Z'
             try:
                 clean = mtime_val.replace("Z", "+00:00")
                 mtime = datetime.fromisoformat(clean).astimezone(timezone.utc)
@@ -58,11 +65,11 @@ class Storage:
         else:
             mtime = datetime.now(timezone.utc)
 
-        return {
-            "path": self.normalize_path(path),
-            "size": info.get("size"),
-            "mtime": mtime.replace(microsecond=0),
-        }
+        return FileInfo(
+            path=self.normalize_path(path),
+            size=info.get("size"),
+            mtime=mtime.replace(microsecond=0),
+        )
 
     def normalize_path(self, path: str) -> str:
         """Normalize local/remote path."""
