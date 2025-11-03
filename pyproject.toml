@@ -112,7 +112,7 @@ pass_env = [
     "GITHUB_*",
     "TAP_SPREADSHEETS_*",
 ]
-dependency_groups = [ "test", "typing" ]
+dependency_groups = [ "test", "typing", "dev" ]
 commands = [ [ "pytest", { replace = "posargs", default = [ "tests" ], extend = true } ] ]
 
 [tool.tox.env.typing]
