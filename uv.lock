@@ -21,18 +21,6 @@ wheels = [
 ]
 
 [[package]]
-name = "aiodocker"
-version = "0.24.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "aiohttp" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/d7/30104dfac550ae6570d4dce24c2cbf2ddefd4937c9e861641314abfd8abb/aiodocker-0.24.0.tar.gz", hash = "sha256:661a6f9a479951f11f793031dcd5d55337e232c4ceaee69d51ceb885e5f16fac", size = 135482, upload-time = "2024-11-21T02:23:59.642Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/0c/5b/2bb8b632041e314a0a917ade80382ca6a8f331f12c7eb409e59cd0485cc9/aiodocker-0.24.0-py3-none-any.whl", hash = "sha256:2199b7b01f8ce68f9cabab7910ecb26192f6f3494163f1ccffe527b4c3875689", size = 34849, upload-time = "2024-11-21T02:23:58.053Z" },
-]
-
-[[package]]
 name = "aiohappyeyeballs"
 version = "2.6.1"
 source = { registry = "https://pypi.org/simple" }
@@ -1124,10 +1112,9 @@ wheels = [
 
 [[package]]
 name = "meltano"
-version = "3.9.1"
+version = "4.0.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "aiodocker" },
     { name = "alembic" },
     { name = "anyio" },
     { name = "backports-strenum", marker = "python_full_version < '3.11'" },
@@ -1143,6 +1130,7 @@ dependencies = [
     { name = "jsonschema" },
     { name = "packaging" },
     { name = "pip" },
+    { name = "platformdirs" },
     { name = "psutil" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
@@ -1159,9 +1147,9 @@ dependencies = [
     { name = "uv" },
     { name = "virtualenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/38/40/da9a51dfff64e0fe6aea07447d285a0cf50a7dfef3993dae044184a83c60/meltano-3.9.1.tar.gz", hash = "sha256:95ec26149b4e1c6696e53cdbe5c62c9af665aa6308bbb4c43534819775249da9", size = 12709912, upload-time = "2025-08-08T23:37:07.858Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/93/5a/16d608cdb88b9b307e0df5d80319988028d2ab8bf9bd85dafd0cd246a02f/meltano-4.0.1.tar.gz", hash = "sha256:a1e1c4578da16d9d02ccdfbd2edc70cc91b44b1a42feac5c1218059fb37df0a8", size = 12757093, upload-time = "2025-10-23T21:41:51.928Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/8a/83240f3528195426c29c6582f7249826708256f7333f9a658617caf7c921/meltano-3.9.1-py3-none-any.whl", hash = "sha256:ef3009043544b11d5e4c6ab58bb459f46ecb23b1b16df8f641ff993d9560ce26", size = 370825, upload-time = "2025-08-08T23:37:05.643Z" },
+    { url = "https://files.pythonhosted.org/packages/2d/f1/86e1c70353409e32d3f4bff6aa5d6d07377ad3d0f9ede67720d62d7c6b4d/meltano-4.0.1-py3-none-any.whl", hash = "sha256:98e2e7aecec9822ef947466fab7a3bd03801f22350d90f8d0987febeb7909d36", size = 393618, upload-time = "2025-10-23T21:41:49.272Z" },
 ]
 
 [[package]]
