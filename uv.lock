@@ -790,18 +790,6 @@ wheels = [
 ]
 
 [[package]]
-name = "flatten-dict"
-version = "0.4.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "six" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/89/c6/5fe21639369f2ea609c964e20870b5c6c98a134ef12af848a7776ddbabe3/flatten-dict-0.4.2.tar.gz", hash = "sha256:506a96b6e6f805b81ae46a0f9f31290beb5fa79ded9d80dbe1b7fa236ab43076", size = 10362, upload-time = "2021-08-08T09:56:51.455Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/43/f5/ee39c6e92acc742c052f137b47c210cd0a1b72dcd3f98495528bb4d27761/flatten_dict-0.4.2-py2.py3-none-any.whl", hash = "sha256:7e245b20c4c718981212210eec4284a330c9f713e632e98765560e05421e48ad", size = 9656, upload-time = "2021-08-08T09:56:54.313Z" },
-]
-
-[[package]]
 name = "frozenlist"
 version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1310,7 +1298,7 @@ wheels = [
 
 [[package]]
 name = "meltano"
-version = "4.0.1"
+version = "4.0.5"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alembic" },
@@ -1322,7 +1310,6 @@ dependencies = [
     { name = "click-didyoumean" },
     { name = "dateparser" },
     { name = "fasteners" },
-    { name = "flatten-dict" },
     { name = "importlib-metadata", marker = "python_full_version < '3.12'" },
     { name = "jinja2" },
     { name = "jsonschema" },
@@ -1345,9 +1332,9 @@ dependencies = [
     { name = "uv" },
     { name = "virtualenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/93/5a/16d608cdb88b9b307e0df5d80319988028d2ab8bf9bd85dafd0cd246a02f/meltano-4.0.1.tar.gz", hash = "sha256:a1e1c4578da16d9d02ccdfbd2edc70cc91b44b1a42feac5c1218059fb37df0a8", size = 12757093, upload-time = "2025-10-23T21:41:51.928Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/36/0f/0615df3aad26e5235dd16bd2197f29be830e0ee0234eb9ef1e9be15cf9cf/meltano-4.0.5.tar.gz", hash = "sha256:b3cba5b655f568052100dc82641ca8f6fa86ec786f55b5bc5e9d467a6aacc1f1", size = 12758948, upload-time = "2025-11-04T15:32:53.995Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/f1/86e1c70353409e32d3f4bff6aa5d6d07377ad3d0f9ede67720d62d7c6b4d/meltano-4.0.1-py3-none-any.whl", hash = "sha256:98e2e7aecec9822ef947466fab7a3bd03801f22350d90f8d0987febeb7909d36", size = 393618, upload-time = "2025-10-23T21:41:49.272Z" },
+    { url = "https://files.pythonhosted.org/packages/9c/25/719a88d917303ccacaeb12af8f849c31b49b71da589125b5654684212de9/meltano-4.0.5-py3-none-any.whl", hash = "sha256:93dcfd369499863094ab68d48424ef20e70dd2c8f45a470501a783294eb3856d", size = 394427, upload-time = "2025-11-04T15:32:51.829Z" },
 ]
 
 [[package]]
@@ -2970,16 +2957,16 @@ wheels = [
 
 [[package]]
 name = "types-boto3"
-version = "1.40.64"
+version = "1.40.74"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "botocore-stubs" },
     { name = "types-s3transfer" },
     { name = "typing-extensions", marker = "python_full_version < '3.12'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/f2/7d/c2f864bf7130b90d1f5e9e5453cf70871cf610cb8aec8cb3d0087a8d8494/types_boto3-1.40.64.tar.gz", hash = "sha256:dccad8f0cf418a956e677334aa83cac28360c7033466fbbaf8da5fa7a29c0bc3", size = 100080, upload-time = "2025-10-31T19:48:29.983Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/9d/1b/0b48896a935c705d36a34c79defe7ef80a6a56d167e84eb0e40fa2fbe909/types_boto3-1.40.74.tar.gz", hash = "sha256:4792265e32a207cad6cd1ffea10a56164441beb1201d528f6b06bdb673b324bf", size = 99778, upload-time = "2025-11-14T20:34:41.052Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/67/8a/c32ac6a0ab0b4a872b51389bcb196a203634d6134b5140178131e407f05e/types_boto3-1.40.64-py3-none-any.whl", hash = "sha256:f1636f459d31b8d18164acf02dbc010b7064f37990063710e9166ae913fed38d", size = 68952, upload-time = "2025-10-31T19:48:25.851Z" },
+    { url = "https://files.pythonhosted.org/packages/98/0d/49e6618fddaa21741fa8ce0350aeea6ac2b35e7571e9796b0f49077db9df/types_boto3-1.40.74-py3-none-any.whl", hash = "sha256:ab8baab1826dcb5dae7931b582e01157573380a259e5ff8d3a91115870604909", size = 68870, upload-time = "2025-11-14T20:34:34.455Z" },
 ]
 
 [[package]]
