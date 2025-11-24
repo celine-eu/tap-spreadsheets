@@ -790,18 +790,6 @@ wheels = [
 ]
 
 [[package]]
-name = "flatten-dict"
-version = "0.4.2"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "six" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/89/c6/5fe21639369f2ea609c964e20870b5c6c98a134ef12af848a7776ddbabe3/flatten-dict-0.4.2.tar.gz", hash = "sha256:506a96b6e6f805b81ae46a0f9f31290beb5fa79ded9d80dbe1b7fa236ab43076", size = 10362, upload-time = "2021-08-08T09:56:51.455Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/43/f5/ee39c6e92acc742c052f137b47c210cd0a1b72dcd3f98495528bb4d27761/flatten_dict-0.4.2-py2.py3-none-any.whl", hash = "sha256:7e245b20c4c718981212210eec4284a330c9f713e632e98765560e05421e48ad", size = 9656, upload-time = "2021-08-08T09:56:54.313Z" },
-]
-
-[[package]]
 name = "frozenlist"
 version = "1.7.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1310,7 +1298,7 @@ wheels = [
 
 [[package]]
 name = "meltano"
-version = "4.0.1"
+version = "4.0.6"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "alembic" },
@@ -1322,7 +1310,6 @@ dependencies = [
     { name = "click-didyoumean" },
     { name = "dateparser" },
     { name = "fasteners" },
-    { name = "flatten-dict" },
     { name = "importlib-metadata", marker = "python_full_version < '3.12'" },
     { name = "jinja2" },
     { name = "jsonschema" },
@@ -1345,9 +1332,9 @@ dependencies = [
     { name = "uv" },
     { name = "virtualenv" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/93/5a/16d608cdb88b9b307e0df5d80319988028d2ab8bf9bd85dafd0cd246a02f/meltano-4.0.1.tar.gz", hash = "sha256:a1e1c4578da16d9d02ccdfbd2edc70cc91b44b1a42feac5c1218059fb37df0a8", size = 12757093, upload-time = "2025-10-23T21:41:51.928Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/17/57/762f941a151ec7e81b5cf3dd4b0b03b4aac38ad2c01066013fcfb231098f/meltano-4.0.6.tar.gz", hash = "sha256:24cb2166f60d56aa340ee6ad07cbb4d1fc4e2895fc35c7a8c5d539ac30f51f0d", size = 12759697, upload-time = "2025-11-20T00:09:27.394Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/2d/f1/86e1c70353409e32d3f4bff6aa5d6d07377ad3d0f9ede67720d62d7c6b4d/meltano-4.0.1-py3-none-any.whl", hash = "sha256:98e2e7aecec9822ef947466fab7a3bd03801f22350d90f8d0987febeb7909d36", size = 393618, upload-time = "2025-10-23T21:41:49.272Z" },
+    { url = "https://files.pythonhosted.org/packages/b6/c5/38296f22f765af7d8934de04bbd57ba22aae00698139f1a7e0aee2471551/meltano-4.0.6-py3-none-any.whl", hash = "sha256:5d22b5b494775c7d602789e92dd165db53d94d2e9f693bee73c8950adf098646", size = 394433, upload-time = "2025-11-20T00:09:25.039Z" },
 ]
 
 [[package]]
