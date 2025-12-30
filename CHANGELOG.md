@@ -1,6 +1,19 @@
 # CHANGELOG
 
 
+## v1.1.2 (2025-12-30)
+
+### Bug Fixes
+
+- Normalize primary_keys values to match in drop_empty checks
+  ([`2e6a012`](https://github.com/celine-eu/tap-spreadsheets/commit/2e6a0120c4151501266c102cd279cb014433f9f3))
+
+### Chores
+
+- Update version
+  ([`81e135b`](https://github.com/celine-eu/tap-spreadsheets/commit/81e135b9974a52b12530e2730f5007b31ba76da3))
+
+
 ## v1.1.1 (2025-11-03)
 
 ### Bug Fixes
