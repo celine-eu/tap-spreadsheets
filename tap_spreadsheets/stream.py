@@ -67,7 +67,9 @@ class SpreadsheetStream(Stream):
         self.replication_key = SDC_INCREMENTAL_KEY
         self.forced_replication_method = "INCREMENTAL"
 
-        self.primary_keys = [n.lower() for n in file_cfg.get("primary_keys", [])]
+        self.primary_keys = [
+            self._stem_header(n, 0) for n in file_cfg.get("primary_keys", [])
+        ]
         self.drop_empty = file_cfg.get("drop_empty", True)
         self.skip_columns = file_cfg.get("skip_columns", 0)
         self.skip_rows = file_cfg.get("skip_rows", 0)
