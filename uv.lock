@@ -236,15 +236,6 @@ wheels = [
 ]
 
 [[package]]
-name = "backoff"
-version = "2.2.1"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/47/d7/5bbeb12c44d7c4f2fb5b56abce497eb5ed9f34d85701de869acedd602619/backoff-2.2.1.tar.gz", hash = "sha256:03f829f5bb1923180821643f8753b0502c3b682293992485b0eef2807afa5cba", size = 17001, upload-time = "2022-10-05T19:19:32.061Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/df/73/b6e24bd22e6720ca8ee9a85a0c4a2971af8497d8f3193fa05390cbd46e09/backoff-2.2.1-py3-none-any.whl", hash = "sha256:63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8", size = 15148, upload-time = "2022-10-05T19:19:30.546Z" },
-]
-
-[[package]]
 name = "backports-datetime-fromisoformat"
 version = "2.0.3"
 source = { registry = "https://pypi.org/simple" }
@@ -1956,7 +1947,7 @@ wheels = [
 
 [[package]]
 name = "pytest"
-version = "8.4.2"
+version = "9.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "colorama", marker = "sys_platform == 'win32'" },
@@ -1967,9 +1958,9 @@ dependencies = [
     { name = "pygments" },
     { name = "tomli", marker = "python_full_version < '3.11'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/a3/5c/00a0e072241553e1a7496d638deababa67c5058571567b92a7eaa258397c/pytest-8.4.2.tar.gz", hash = "sha256:86c0d0b93306b961d58d62a4db4879f27fe25513d4b969df351abdddb3c30e01", size = 1519618, upload-time = "2025-09-04T14:34:22.711Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/d1/db/7ef3487e0fb0049ddb5ce41d3a49c235bf9ad299b6a25d5780a89f19230f/pytest-9.0.2.tar.gz", hash = "sha256:75186651a92bd89611d1d9fc20f0b4345fd827c41ccd5c299a868a05d70edf11", size = 1568901, upload-time = "2025-12-06T21:30:51.014Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a8/a4/20da314d277121d6534b3a980b29035dcd51e6744bd79075a6ce8fa4eb8d/pytest-8.4.2-py3-none-any.whl", hash = "sha256:872f880de3fc3a5bdc88a11b39c9710c3497a547cfa9320bc3c5e62fbf272e79", size = 365750, upload-time = "2025-09-04T14:34:20.226Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/ab/b3226f0bd7cdcf710fbede2b3548584366da3b19b5021e74f5bde2a8fa3f/pytest-9.0.2-py3-none-any.whl", hash = "sha256:711ffd45bf766d5264d487b917733b453d917afd2b0ad65223959f59089f875b", size = 374801, upload-time = "2025-12-06T21:30:49.154Z" },
 ]
 
 [[package]]
@@ -1982,6 +1973,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/39/d4/c54ee6a871eee4a7468e3a8c0dead28e634c0bc2110c694309dcb7563a66/pytest_github_actions_annotate_failures-0.3.0.tar.gz", hash = "sha256:d4c3177c98046c3900a7f8ddebb22ea54b9f6822201b5d3ab8fcdea51e010db7", size = 11248, upload-time = "2025-01-17T22:39:32.722Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/6d/73/7b0b15cb8605ee967b34aa1d949737ab664f94e6b0f1534e8339d9e64ab2/pytest_github_actions_annotate_failures-0.3.0-py3-none-any.whl", hash = "sha256:41ea558ba10c332c0bfc053daeee0c85187507b2034e990f21e4f7e5fef044cf", size = 6030, upload-time = "2025-01-17T22:39:31.701Z" },
+]
+
+[[package]]
+name = "python-backoff"
+version = "2.3.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/3b/5a/c8a85e7b0019ba54e46756b0b02ead4c054e098dc23c4fdeaa80996a6872/python_backoff-2.3.1.tar.gz", hash = "sha256:54d67283073afa5deb3bb3f8b335952747c5869e7d8f76bf5a87da42bd86c4d6", size = 18715, upload-time = "2025-12-18T21:30:09.845Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/3c/ea/a3adc8d2cda57480cd7020ae6857f57b17ce1720bb6a652bbb0516fa4dff/python_backoff-2.3.1-py3-none-any.whl", hash = "sha256:d3cfcc0938ec78683edc530bbeb5f5c08252477a40270516497d2bb500da392b", size = 15106, upload-time = "2025-12-18T21:30:08.601Z" },
 ]
 
 [[package]]
@@ -2655,10 +2655,9 @@ wheels = [
 
 [[package]]
 name = "singer-sdk"
-version = "0.52.2"
+version = "0.53.4"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "backoff", marker = "python_full_version < '4'" },
     { name = "backports-datetime-fromisoformat", marker = "python_full_version < '3.11'" },
     { name = "click" },
     { name = "fsspec" },
@@ -2668,6 +2667,7 @@ dependencies = [
     { name = "jsonpath-ng" },
     { name = "jsonschema" },
     { name = "packaging" },
+    { name = "python-backoff" },
     { name = "python-dotenv" },
     { name = "pyyaml" },
     { name = "referencing" },
@@ -2678,9 +2678,9 @@ dependencies = [
     { name = "typing-extensions", marker = "python_full_version < '3.13'" },
     { name = "universal-pathlib" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/44/25/7924b6e3751494de82aaef663947cb7efa4b698dc7e58c5cf20eb824039e/singer_sdk-0.52.2.tar.gz", hash = "sha256:9a06ee276585ac9f9a9b6b3bfad6d509cc8b91796309c9cc17027a5fbe869e39", size = 1322551, upload-time = "2025-10-22T18:59:10.241Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/05/ff/71a0e47688a6832eb86991694dccc512391b5dd614c6f87a11f35900861a/singer_sdk-0.53.4.tar.gz", hash = "sha256:b380cffb7b32edcc25a22c920726845ebfc53220782cf475369bd10b67ff7e81", size = 1333586, upload-time = "2025-11-29T00:14:52.535Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/a3/b2/d706a2fbb7084a8d72c5ea9f55020953bf6ba45387b47048bf1a4ef404f4/singer_sdk-0.52.2-py3-none-any.whl", hash = "sha256:4207986f8f4a7e6f62878b5e1bef7e8c44efbcef02922872b504ecb465815567", size = 204899, upload-time = "2025-10-22T18:59:07.985Z" },
+    { url = "https://files.pythonhosted.org/packages/b5/2b/0014d0962f45547295d43037d3ad1470f42124bba1424b1e9de7ce180666/singer_sdk-0.53.4-py3-none-any.whl", hash = "sha256:0d3899eba6109dc4c2178248cfe6d0626b9743899f02a3107490e97ead3dd66b", size = 207938, upload-time = "2025-11-29T00:14:50.743Z" },
 ]
 
 [package.optional-dependencies]
@@ -2858,7 +2858,7 @@ requires-dist = [
     { name = "python-dateutil", specifier = ">=2.9.0.post0" },
     { name = "s3fs", specifier = ">=2025.9.0" },
     { name = "s3fs", marker = "extra == 's3'", specifier = "~=2025.9.0" },
-    { name = "singer-sdk", extras = ["faker"], specifier = ">=0.49.1,<0.53.0" },
+    { name = "singer-sdk", extras = ["faker"], specifier = ">=0.49.1,<0.54.0" },
 ]
 provides-extras = ["s3"]
 
